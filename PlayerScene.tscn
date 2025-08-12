@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://u7wyyj1n2r51"]
+
+[node name="PlayerRoot" type="Node2D"]
+
+[node name="BackgroundLayer" type="Node2D" parent="."]
+position = Vector2(-2, -2)
+
+[node name="ContentLayer" type="Node2D" parent="."]
+
+[node name="EffectLayer" type="Node2D" parent="."]
+
+[node name="UILayer" type="Node2D" parent="."]
+position = Vector2(0, -8)
+
+[node name="DebugLayer" type="Node2D" parent="."]
