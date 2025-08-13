@@ -5,14 +5,18 @@ namespace TaikoLine;
 
 public partial class SettingsManager : Node
 {
-    private Resource _settings;
+    private static Settings _settings;
+    public override void _Ready()
+    {
+        LoadSettings();
+    }
 
     private void LoadSettings()
     {
         _settings = new Settings();
     }
     
-    public Resource GetSettings()
+    public static Settings GetSettings()
     {
         return _settings;
     }
