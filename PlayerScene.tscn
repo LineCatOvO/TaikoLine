@@ -1,15 +1,33 @@
-[gd_scene format=3 uid="uid://u7wyyj1n2r51"]
+[gd_scene load_steps=6 format=3 uid="uid://u7wyyj1n2r51"]
+
+[ext_resource type="Script" uid="uid://dytr5qyor58yg" path="res://BackgroundManager.cs" id="1_whk2q"]
+[ext_resource type="Script" uid="uid://ccs4rk4x0isod" path="res://ContentManager.cs" id="2_aahsv"]
+[ext_resource type="Script" uid="uid://c57h34sx34vdy" path="res://EffectManager.cs" id="3_bac8r"]
+[ext_resource type="Script" uid="uid://cde17ta1j3n0" path="res://UiManager.cs" id="4_o7qk3"]
+[ext_resource type="Script" uid="uid://dqb3avap170sq" path="res://DebugManager.cs" id="5_tnyv4"]
 
 [node name="PlayerRoot" type="Node2D"]
 
 [node name="BackgroundLayer" type="Node2D" parent="."]
-position = Vector2(-2, -2)
+script = ExtResource("1_whk2q")
 
 [node name="ContentLayer" type="Node2D" parent="."]
+script = ExtResource("2_aahsv")
+
+[node name="ColorRect" type="ColorRect" parent="ContentLayer"]
+layout_direction = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="EffectLayer" type="Node2D" parent="."]
+script = ExtResource("3_bac8r")
 
 [node name="UILayer" type="Node2D" parent="."]
-position = Vector2(0, -8)
+script = ExtResource("4_o7qk3")
 
 [node name="DebugLayer" type="Node2D" parent="."]
+script = ExtResource("5_tnyv4")
