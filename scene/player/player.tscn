@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://u7wyyj1n2r51"]
+[gd_scene load_steps=8 format=3 uid="uid://u7wyyj1n2r51"]
 
 [ext_resource type="Script" uid="uid://dytr5qyor58yg" path="res://scene/player/BackgroundManager.cs" id="1_fd65k"]
 [ext_resource type="PackedScene" uid="uid://cvs2igkiweypa" path="res://scene/player/content_layer/content_layer.tscn" id="2_7fv2l"]
@@ -6,8 +6,9 @@
 [ext_resource type="Script" uid="uid://dqb3avap170sq" path="res://scene/player/DebugManager.cs" id="5_8uvvx"]
 [ext_resource type="Script" uid="uid://cde17ta1j3n0" path="res://scene/player/UIManager.cs" id="5_732fb"]
 [ext_resource type="Script" uid="uid://6nbsag0nj4ps" path="res://scene/player/AudioPlayer.cs" id="6_rkmeh"]
+[ext_resource type="Script" uid="uid://nj6kxq70841a" path="res://scene/player/GameValues.cs" id="7_732fb"]
 
-[node name="root" type="Control"]
+[node name="Player" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -32,3 +33,6 @@ script = ExtResource("5_8uvvx")
 
 [node name="AudioPlayer" type="AudioStreamPlayer" parent="."]
 script = ExtResource("6_rkmeh")
+
+[node name="GameValues" type="Node" parent="."]
+script = ExtResource("7_732fb")

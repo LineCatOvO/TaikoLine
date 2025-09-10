@@ -1,9 +1,32 @@
-[gd_scene load_steps=2 format=3 uid="uid://bu6eeeqy6khxi"]
+[gd_scene load_steps=3 format=3 uid="uid://bu6eeeqy6khxi"]
 
 [ext_resource type="Script" uid="uid://bf3mi7ul1nnww" path="res://scene/player/drum_indicator/DrumIndicator.cs" id="1_1hnyy"]
+[ext_resource type="Script" uid="uid://mkqr6cbkys7d" path="res://scene/player/drum_indicator/ComboText.cs" id="2_3kvm0"]
 
-[node name="DrumIndicator" type="ColorRect"]
+[node name="DrumIndicator" type="ColorRect" node_paths=PackedStringArray("ComboText")]
 anchors_preset = -1
+anchor_right = 0.563
 anchor_bottom = 1.0
 size_flags_horizontal = 0
 script = ExtResource("1_1hnyy")
+ComboText = NodePath("ComboText")
+
+[node name="ComboText" type="RichTextLabel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.2
+anchor_top = 0.2
+anchor_right = 0.8
+anchor_bottom = 0.8
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+bbcode_enabled = true
+text = "[font_size=100][color=black]500[/color][/font_size]"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("2_3kvm0")
