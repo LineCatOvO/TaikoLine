@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3 uid="uid://cvs2igkiweypa"]
+
+[ext_resource type="Script" uid="uid://ccs4rk4x0isod" path="res://scene/player/content_manager.cs" id="1_ly8dk"]
+[ext_resource type="PackedScene" uid="uid://brljjm1cs1xmh" path="res://scene/player/note_track/note_track.tscn" id="2_h4kbk"]
+
+[node name="ContentLayer" type="Node2D"]
+script = ExtResource("1_ly8dk")
+
+[node name="NoteTrack" parent="." instance=ExtResource("2_h4kbk")]

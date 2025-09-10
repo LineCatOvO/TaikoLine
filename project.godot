@@ -13,11 +13,10 @@ config_version=5
 config/name="TaikoLine"
 run/main_scene="uid://u7wyyj1n2r51"
 config/features=PackedStringArray("4.4", "C#", "GL Compatibility")
-config/icon="res://icon.svg"
 
 [autoload]
 
-SettingsManager="*res://SettingsManager.cs"
+SettingsManager="*res://scene/player/settings_manager.cs"
 
 [display]
 
