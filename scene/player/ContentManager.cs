@@ -1,7 +1,7 @@
 using Godot;
 using System;
 
-public partial class ContentManager : Node2D
+public partial class ContentManager :Control
 {
 	public static readonly Color DefaultDonColor = new Color(1f, 0f, 0f);
 	public static readonly Color DefaultKaColor = new Color(0f, 0f, 1f);

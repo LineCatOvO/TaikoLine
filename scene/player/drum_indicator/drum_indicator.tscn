@@ -2,5 +2,8 @@
 
 [ext_resource type="Script" uid="uid://bf3mi7ul1nnww" path="res://scene/player/drum_indicator/DrumIndicator.cs" id="1_1hnyy"]
 
-[node name="DrumIndicator" type="Node2D"]
+[node name="DrumIndicator" type="ColorRect"]
+anchors_preset = -1
+anchor_bottom = 1.0
+size_flags_horizontal = 0
 script = ExtResource("1_1hnyy")

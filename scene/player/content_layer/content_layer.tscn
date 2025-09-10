@@ -4,9 +4,36 @@
 [ext_resource type="PackedScene" uid="uid://brljjm1cs1xmh" path="res://scene/player/note_track/note_track.tscn" id="2_h4kbk"]
 [ext_resource type="PackedScene" uid="uid://bu6eeeqy6khxi" path="res://scene/player/drum_indicator/drum_indicator.tscn" id="3_nw4o4"]
 
-[node name="ContentLayer" type="Node2D"]
+[node name="ContentLayer" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_ly8dk")
 
 [node name="NoteTrack" parent="." instance=ExtResource("2_h4kbk")]
+layout_mode = 2
+anchors_preset = 0
+size_flags_vertical = 5
+size_flags_stretch_ratio = 0.0
 
-[node name="DrumIndicator" parent="." instance=ExtResource("3_nw4o4")]
+[node name="DrumIndicator" parent="NoteTrack" instance=ExtResource("3_nw4o4")]
+layout_mode = 1
+anchor_right = 0.138
+grow_vertical = 2
+
+[node name="DonChan" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 83.0
+offset_top = 94.0
+offset_right = 383.0
+offset_bottom = 314.0
+
+[node name="FeverMeter" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 729.0
+offset_top = 275.0
+offset_right = 1929.0
+offset_bottom = 315.0
