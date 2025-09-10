@@ -5,19 +5,6 @@ public partial class NoteTrack : ColorRect
 {
 	public override void _Draw()
 	{
-		//todo Read Settings from SettingsManager to acquire values in need
-		Vector2 WindowSize = GetWindow().Size;
-		var trackHeight = (int)(GetWindow().Size.Y * 0.3f);
-		var trackWidth = GetWindow().Size.X;//full width of display
-		//draw track
-		ColorRect aSimpleRectForTrack = new ColorRect();
-		aSimpleRectForTrack.SetColor(new Color(.8f, .8f, .8f));
-		aSimpleRectForTrack.Size = new Vector2I(trackWidth, trackHeight);
-		aSimpleRectForTrack.SetAnchor(Side.Left,0f);
-		aSimpleRectForTrack.SetPosition(new Vector2(0f,GetWindow().Size.Y*0.3f));
 		
-		float radius=0.2f;
-		Node2D RoundForDrum = new Node2D();
-		AddChild(aSimpleRectForTrack);
 	}
 }
