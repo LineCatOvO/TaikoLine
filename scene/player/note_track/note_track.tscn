@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://brljjm1cs1xmh"]
 
-[ext_resource type="Script" uid="uid://bmvd7bsmy5rnv" path="res://scene/player/note_track/note_track.cs" id="1_mvm05"]
+[ext_resource type="Script" uid="uid://bmvd7bsmy5rnv" path="res://scene/player/note_track/NoteTrack.cs" id="1_fcfrh"]
 
 [node name="NoteTrack" type="Node2D"]
-script = ExtResource("1_mvm05")
+script = ExtResource("1_fcfrh")

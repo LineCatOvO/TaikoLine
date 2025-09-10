@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bu6eeeqy6khxi"]
+
+[ext_resource type="Script" uid="uid://bf3mi7ul1nnww" path="res://scene/player/drum_indicator/DrumIndicator.cs" id="1_1hnyy"]
+
+[node name="DrumIndicator" type="Node2D"]
+script = ExtResource("1_1hnyy")

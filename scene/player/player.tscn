@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://u7wyyj1n2r51"]
+[gd_scene load_steps=7 format=3 uid="uid://u7wyyj1n2r51"]
 
-[ext_resource type="Script" uid="uid://dytr5qyor58yg" path="res://scene/player/background_manager.cs" id="1_fd65k"]
+[ext_resource type="Script" uid="uid://dytr5qyor58yg" path="res://scene/player/BackgroundManager.cs" id="1_fd65k"]
 [ext_resource type="PackedScene" uid="uid://cvs2igkiweypa" path="res://scene/player/content_layer/content_layer.tscn" id="2_7fv2l"]
-[ext_resource type="Script" uid="uid://c57h34sx34vdy" path="res://scene/player/effect_manager.cs" id="3_fra3v"]
-[ext_resource type="Script" uid="uid://cde17ta1j3n0" path="res://scene/player/ui_manager.cs" id="4_dpmh7"]
-[ext_resource type="Script" uid="uid://dqb3avap170sq" path="res://scene/player/debug_manager.cs" id="5_8uvvx"]
+[ext_resource type="Script" uid="uid://c57h34sx34vdy" path="res://scene/player/EffectManager.cs" id="3_fra3v"]
+[ext_resource type="Script" uid="uid://ccs4rk4x0isod" path="res://scene/player/ContentManager.cs" id="3_rkmeh"]
+[ext_resource type="Script" uid="uid://dqb3avap170sq" path="res://scene/player/DebugManager.cs" id="5_8uvvx"]
+[ext_resource type="Script" uid="uid://cde17ta1j3n0" path="res://scene/player/UIManager.cs" id="5_732fb"]
 
 [node name="root" type="Node2D"]
 
@@ -12,12 +13,13 @@
 script = ExtResource("1_fd65k")
 
 [node name="ContentLayer" parent="." instance=ExtResource("2_7fv2l")]
+script = ExtResource("3_rkmeh")
 
 [node name="EffectLayer" type="Node2D" parent="."]
 script = ExtResource("3_fra3v")
 
 [node name="UILayer" type="Node2D" parent="."]
-script = ExtResource("4_dpmh7")
+script = ExtResource("5_732fb")
 
 [node name="DebugLayer" type="Node2D" parent="."]
 script = ExtResource("5_8uvvx")
