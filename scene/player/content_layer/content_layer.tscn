@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://cvs2igkiweypa"]
+[gd_scene load_steps=5 format=3 uid="uid://cvs2igkiweypa"]
 
 [ext_resource type="Script" uid="uid://ccs4rk4x0isod" path="res://scene/player/ContentManager.cs" id="1_ly8dk"]
 [ext_resource type="PackedScene" uid="uid://brljjm1cs1xmh" path="res://scene/player/note_track/note_track.tscn" id="2_h4kbk"]
 [ext_resource type="PackedScene" uid="uid://bu6eeeqy6khxi" path="res://scene/player/drum_indicator/drum_indicator.tscn" id="3_nw4o4"]
+[ext_resource type="Script" uid="uid://qwbxaocg17y0" path="res://scene/player/content_layer/FeverMeter.cs" id="4_fy3ey"]
 
 [node name="ContentLayer" type="Control"]
 layout_mode = 3
@@ -37,3 +38,4 @@ offset_left = 729.0
 offset_top = 275.0
 offset_right = 1929.0
 offset_bottom = 315.0
+script = ExtResource("4_fy3ey")
