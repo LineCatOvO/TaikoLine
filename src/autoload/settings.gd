@@ -13,6 +13,9 @@ var scroll_speed: float = 1.0
 var judge_offset: float = 0.0  ## 判定偏移（毫秒）
 var show_debug: bool = false
 
+## 皮肤设置
+var current_skin: String = "default"
+
 ## 保存设置
 func save_settings() -> void:
 	var config = ConfigFile.new()
@@ -22,6 +25,7 @@ func save_settings() -> void:
 	config.set_value("game", "scroll_speed", scroll_speed)
 	config.set_value("game", "judge_offset", judge_offset)
 	config.set_value("game", "show_debug", show_debug)
+	config.set_value("game", "current_skin", current_skin)
 	config.save("user://settings.cfg")
 
 ## 加载设置
@@ -34,6 +38,7 @@ func load_settings() -> void:
 		scroll_speed = config.get_value("game", "scroll_speed", 1.0)
 		judge_offset = config.get_value("game", "judge_offset", 0.0)
 		show_debug = config.get_value("game", "show_debug", false)
+		current_skin = config.get_value("game", "current_skin", "default")
 
 func _ready() -> void:
 	load_settings()

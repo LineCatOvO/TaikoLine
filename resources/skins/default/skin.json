@@ -1,0 +1,76 @@
+{
+	"name": "Default",
+	"version": "1.0",
+	"author": "TaikoLine",
+	"description": "Default skin for TaikoLine",
+	"notes": {
+		"don": {
+			"color": "#FF3333",
+			"size": 40,
+			"outline_color": "#CC0000",
+			"outline_width": 2
+		},
+		"ka": {
+			"color": "#3366FF",
+			"size": 40,
+			"outline_color": "#0033CC",
+			"outline_width": 2
+		},
+		"don_big": {
+			"color": "#FF6666",
+			"size": 60,
+			"outline_color": "#CC3333",
+			"outline_width": 3
+		},
+		"ka_big": {
+			"color": "#6699FF",
+			"size": 60,
+			"outline_color": "#3366CC",
+			"outline_width": 3
+		},
+		"renda": {
+			"color": "#FF9933",
+			"size": 40,
+			"outline_color": "#CC6600",
+			"outline_width": 2
+		},
+		"renda_big": {
+			"color": "#FFB366",
+			"size": 60,
+			"outline_color": "#CC8033",
+			"outline_width": 3
+		},
+		"balloon": {
+			"color": "#FF33FF",
+			"size": 50,
+			"outline_color": "#CC00CC",
+			"outline_width": 2
+		},
+		"kusudama": {
+			"color": "#33FF33",
+			"size": 50,
+			"outline_color": "#00CC00",
+			"outline_width": 2
+		}
+	},
+	"judge_line": {
+		"color": "#FFD700",
+		"height": 4,
+		"x_position": 200
+	},
+	"background": {
+		"color": "#1a1a2e",
+		"note_area_color": "#16213e"
+	},
+	"ui": {
+		"combo_color": "#FFFFFF",
+		"combo_highlight_color": "#FFD700",
+		"score_color": "#FFFFFF",
+		"soul_gauge_color": "#FF6B6B",
+		"soul_gauge_clear_color": "#4ECDC4"
+	},
+	"gogo": {
+		"overlay_color": "#FF6B0033",
+		"note_glow_color": "#FFD700"
+	}
+}
