@@ -275,7 +275,8 @@ func _play_hit_animation() -> void:
 	var tween = create_tween()
 	tween.tween_property(self, "scale", Vector2(1.2, 1.2), 0.05)
 	tween.tween_property(self, "scale", Vector2(0.0, 0.0), 0.1)
-	tween.tween_callback(queue_free)
+	# 注意：不使用queue_free()，因为音符来自对象池
+	# 对象池会在需要时回收音符
 
 
 ## 重置音符状态（用于对象池）

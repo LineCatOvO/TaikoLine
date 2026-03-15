@@ -523,7 +523,7 @@ func _on_bpm_changed(new_bpm: float) -> void:
 
 
 ## 获取当前状态
-func get_state() -> GameState:
+func get_state() -> PlayState:
 	return current_state
 
 
