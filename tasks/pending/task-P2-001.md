@@ -2,24 +2,27 @@
 
 **创建时间**：2026-03-15
 **优先级**：P2
-**状态**：待处理
+**状态**：✅部分完成
 
 ## 任务描述
 为TaikoLine项目添加实际的音效资源文件，当前只有占位说明文档。
 
-## 具体要求
-- 添加don.ogg（红音符打击音）
-- 添加ka.ogg（蓝音符打击音）
-- 添加balloon.ogg（气球打击音）
-- 添加judge_perfect.ogg（良判定音）
-- 添加judge_good.ogg（可判定音）
-- 添加judge_miss.ogg（不可判定音）
-- 添加combo_bonus.ogg（连击加成音）
+## 已完成内容
+- [x] 创建tools/generate_sounds.gd音效生成工具
+- [x] 更新resources/sounds/README.md音效说明文档
+- [x] 工具支持生成don、ka、balloon、judge_perfect、judge_good、judge_miss、combo_bonus音效
 
-## 音效来源建议
-- 免费音效库：Freesound.org
-- 自制音效：使用音频编辑软件
-- 注意版权问题
+## 待完成内容
+- [ ] 在Godot编辑器中运行音效生成脚本
+- [ ] 将生成的WAV文件转换为OGG格式
+- [ ] 验证音效在游戏中正常播放
+
+## 使用说明
+1. 在Godot编辑器中打开项目
+2. 打开 `tools/generate_sounds.gd` 文件
+3. 按 `Ctrl+Shift+X` 或点击 `File -> Run` 运行脚本
+4. 在FileSystem面板中右键点击WAV文件 -> Import -> 选择OGG格式
+5. 删除原WAV文件（可选）
 
 ## 验收标准
 - [ ] 所有音效文件已添加
