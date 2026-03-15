@@ -39,6 +39,42 @@ enum BranchType {
 	MASTER = 2   ## 大师分支
 }
 
+## 分支条件类型枚举
+enum BranchConditionType {
+	ACCURACY = 0,    ## 准确率判定
+	RENDA = 1,       ## 连打次数判定
+	SCORE = 2        ## 分数判定
+}
+
+## 分支条件数据类
+class BranchCondition:
+	## 条件类型
+	var condition_type: BranchConditionType = BranchConditionType.ACCURACY
+	## 普通分支阈值（低于此值进入普通分支）
+	var normal_threshold: float = 0.0
+	## 高级分支阈值（低于此值进入高级分支，高于则进入大师分支）
+	var expert_threshold: float = 0.0
+	## 条件触发时间点
+	var trigger_time: float = 0.0
+	## 是否已判定
+	var is_judged: bool = false
+	## 判定结果
+	var result_branch: BranchType = BranchType.NORMAL
+
+	func _init(p_type: BranchConditionType = BranchConditionType.ACCURACY) -> void:
+		condition_type = p_type
+
+	## 根据当前值判定分支
+	func evaluate(current_value: float) -> BranchType:
+		if current_value >= expert_threshold:
+			result_branch = BranchType.MASTER
+		elif current_value >= normal_threshold:
+			result_branch = BranchType.EXPERT
+		else:
+			result_branch = BranchType.NORMAL
+		is_judged = true
+		return result_branch
+
 ## 音符数据类
 class TJANote:
 	## 音符类型
@@ -171,14 +207,22 @@ class TJACourse:
 	}
 	## 是否有分支
 	var has_branch: bool = false
-	
+	## 分支条件列表
+	var branch_conditions: Array[BranchCondition] = []
+	## 当前分支
+	var current_branch: BranchType = BranchType.NORMAL
+
 	func _init(p_type: CourseType = CourseType.ONI) -> void:
 		course_type = p_type
-	
+
 	## 添加小节
 	func add_measure(measure: TJAMeasure) -> void:
 		measures.append(measure)
-	
+
+	## 添加分支条件
+	func add_branch_condition(condition: BranchCondition) -> void:
+		branch_conditions.append(condition)
+
 	## 获取总音符数
 	func get_total_notes() -> int:
 		var count: int = 0
@@ -187,13 +231,21 @@ class TJACourse:
 				if note.is_hittable():
 					count += 1
 		return count
-	
+
 	## 获取总时长（秒）
 	func get_total_duration() -> float:
 		var duration: float = 0.0
 		for measure in measures:
 			duration += measure.get_duration()
 		return duration
+
+	## 获取指定分支的小节数据
+	func get_branch_measures(branch: BranchType) -> Array:
+		return branches.get(branch, [])
+
+	## 设置分支小节数据
+	func set_branch_measures(branch: BranchType, branch_measures: Array) -> void:
+		branches[branch] = branch_measures
 
 ## 歌曲元数据类
 class TJASong:
@@ -245,6 +297,12 @@ class TJASong:
 		if title_en != "":
 			return title_en
 		return title
+
+	## 获取歌曲文件所在目录
+	func get_base_dir() -> String:
+		if file_path.is_empty():
+			return ""
+		return file_path.get_base_dir()
 
 ## 解析结果类
 class TJAParseResult:

@@ -44,6 +44,12 @@ var _renda_type: TJAData.NoteType = TJAData.NoteType.NONE
 var _current_branch: TJAData.BranchType = TJAData.BranchType.NORMAL
 ## 分支条件
 var _branch_condition: Array = []
+## 当前分支条件对象
+var _current_branch_condition: TJAData.BranchCondition = null
+## 分支小节临时存储
+var _branch_measures_n: Array = []
+var _branch_measures_e: Array = []
+var _branch_measures_m: Array = []
 ## 错误信息
 var _error: String = ""
 var _error_line: int = 0
@@ -152,6 +158,10 @@ func _reset_state() -> void:
 	_renda_type = TJAData.NoteType.NONE
 	_current_branch = TJAData.BranchType.NORMAL
 	_branch_condition = []
+	_current_branch_condition = null
+	_branch_measures_n = []
+	_branch_measures_e = []
+	_branch_measures_m = []
 	_error = ""
 	_error_line = 0
 
@@ -267,7 +277,7 @@ func _parse_notes_data(line: String) -> bool:
 	if _current_course == null:
 		_error = "谱面数据在难度定义之外"
 		return false
-	
+
 	# 创建新小节
 	var measure = TJAData.TJAMeasure.new(_measure_index)
 	measure.bpm = _current_bpm
@@ -276,26 +286,26 @@ func _parse_notes_data(line: String) -> bool:
 	measure.show_barline = _show_barline
 	measure.is_gogo = _is_gogo
 	measure.branch = _current_branch
-	
+
 	# 解析音符
 	var note_chars = line.split("")
 	var note_count = 0
 	var total_notes = note_chars.size()
-	
+
 	for i in range(note_chars.size()):
 		var char = note_chars[i]
-		
+
 		# 跳过逗号（小节分隔符）
 		if char == ",":
 			continue
-		
+
 		# 解析音符类型
 		var note_type = TJAData.char_to_note_type(char)
 		var note = TJAData.TJANote.new()
 		note.note_type = note_type
 		note.position = float(i) / float(max(total_notes, 1))
 		note.raw_char = char
-		
+
 		# 处理连打
 		if _in_renda:
 			if note_type == TJAData.NoteType.END:
@@ -328,16 +338,26 @@ func _parse_notes_data(line: String) -> bool:
 				_in_renda = true
 				_renda_type = note_type
 				_renda_count = 0
-		
+
 		# 添加音符到小节
 		if note_type != TJAData.NoteType.NONE or char == "0":
 			measure.add_note(note)
 			note_count += 1
+
+	# 根据当前分支状态存储小节
+	match _state:
+		ParseState.BRANCH_N:
+			_branch_measures_n.append(measure)
+		ParseState.BRANCH_E:
+			_branch_measures_e.append(measure)
+		ParseState.BRANCH_M:
+			_branch_measures_m.append(measure)
+		_:
+			# 非分支状态，添加到主小节列表
+			_current_course.add_measure(measure)
 	
-	# 添加小节到难度
-	_current_course.add_measure(measure)
 	_measure_index += 1
-	
+
 	return true
 
 ## 解析命令
@@ -402,10 +422,23 @@ func _parse_command(line: String) -> bool:
 			_current_course.has_branch = true
 			var parts = cmd_params.split(",")
 			if parts.size() >= 3:
-				_branch_condition = [
-					_parse_float(parts[1], 0.0),  # 普通分支阈值
-					_parse_float(parts[2], 0.0)   # 高级分支阈值
-				]
+				var condition_type = _parse_int(parts[0], 0)
+				var normal_threshold = _parse_float(parts[1], 0.0)
+				var expert_threshold = _parse_float(parts[2], 0.0)
+				
+				# 创建分支条件对象
+				_current_branch_condition = TJAData.BranchCondition.new()
+				_current_branch_condition.condition_type = condition_type as TJAData.BranchConditionType
+				_current_branch_condition.normal_threshold = normal_threshold
+				_current_branch_condition.expert_threshold = expert_threshold
+				
+				# 保存阈值用于兼容
+				_branch_condition = [normal_threshold, expert_threshold]
+				
+				# 清空分支小节临时存储
+				_branch_measures_n = []
+				_branch_measures_e = []
+				_branch_measures_m = []
 		"N":
 			# 普通分支
 			_state = ParseState.BRANCH_N
@@ -422,6 +455,14 @@ func _parse_command(line: String) -> bool:
 			# 分支结束
 			_state = ParseState.NOTES
 			_current_branch = TJAData.BranchType.NORMAL
+			
+			# 保存分支小节数据到课程
+			if _current_branch_condition != null:
+				_current_course.add_branch_condition(_current_branch_condition)
+				_current_course.set_branch_measures(TJAData.BranchType.NORMAL, _branch_measures_n.duplicate())
+				_current_course.set_branch_measures(TJAData.BranchType.EXPERT, _branch_measures_e.duplicate())
+				_current_course.set_branch_measures(TJAData.BranchType.MASTER, _branch_measures_m.duplicate())
+				_current_branch_condition = null
 		"SECTION":
 			# 重置分支判定
 			_branch_condition = []

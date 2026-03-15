@@ -62,6 +62,16 @@ var is_dondoko_full_combo: bool = false
 const COMBO_BONUS_THRESHOLD: int = 10  ## 开始加成的连击数
 const COMBO_BONUS_MAX: float = 1.0     ## 最大加成系数
 
+## Go-Go Time配置
+const GOGO_SCORE_MULTIPLIER: float = 1.2  ## Go-Go Time分数倍率
+
+## Go-Go Time状态
+var is_gogo_time: bool = false
+
+## 最大连打次数（用于分支判定）
+var max_renda_count: int = 0
+var current_renda_count: int = 0
+
 
 func _ready() -> void:
 	reset()
@@ -82,6 +92,31 @@ func reset() -> void:
 	is_cleared = false
 	is_full_combo = false
 	is_dondoko_full_combo = true  ## 初始假设全良
+	is_gogo_time = false
+	max_renda_count = 0
+	current_renda_count = 0
+
+
+## 设置Go-Go Time状态
+func set_gogo_time(enabled: bool) -> void:
+	is_gogo_time = enabled
+
+
+## 获取最大连打次数
+func get_max_renda_count() -> int:
+	return max_renda_count
+
+
+## 记录连打
+func record_renda() -> void:
+	current_renda_count += 1
+	if current_renda_count > max_renda_count:
+		max_renda_count = current_renda_count
+
+
+## 重置连打计数
+func reset_renda_count() -> void:
+	current_renda_count = 0
 
 
 ## 设置总音符数
@@ -137,15 +172,23 @@ func _on_perfect_judge() -> void:
 	current_combo += 1
 	if current_combo > max_combo:
 		max_combo = current_combo
-	
+
 	# 计算分数
 	var combo_bonus = _calculate_combo_bonus()
-	var score_gain = int(base_score * (1.0 + combo_bonus))
-	current_score += score_gain
+	var base_score_value = int(base_score * (1.0 + combo_bonus))
 	
+	# 应用Go-Go Time加成
+	if is_gogo_time:
+		base_score_value = int(base_score_value * GOGO_SCORE_MULTIPLIER)
+	
+	current_score += base_score_value
+
 	# 更新魂槽
-	_update_soul_gauge(soul_gain_perfect)
-	
+	var soul_gain = soul_gain_perfect
+	if is_gogo_time:
+		soul_gain *= GOGO_SCORE_MULTIPLIER
+	_update_soul_gauge(soul_gain)
+
 	# 发送更新信号
 	score_updated.emit(current_score)
 	combo_updated.emit(current_combo)
@@ -157,13 +200,16 @@ func _on_good_judge() -> void:
 	current_combo += 1
 	if current_combo > max_combo:
 		max_combo = current_combo
-	
+
 	# 更新魂槽
-	_update_soul_gauge(soul_gain_good)
-	
+	var soul_gain = soul_gain_good
+	if is_gogo_time:
+		soul_gain *= GOGO_SCORE_MULTIPLIER
+	_update_soul_gauge(soul_gain)
+
 	# 可判定不计入全良
 	is_dondoko_full_combo = false
-	
+
 	# 发送更新信号
 	score_updated.emit(current_score)
 	combo_updated.emit(current_combo)

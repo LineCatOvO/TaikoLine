@@ -32,6 +32,15 @@ var scroll_system: Node = null
 ## 判定系统引用
 var judge_system: Node = null
 
+## 分支系统
+var current_branch: int = TJAData.BranchType.NORMAL
+var _branch_note_queues: Dictionary = {
+	TJAData.BranchType.NORMAL: [],
+	TJAData.BranchType.EXPERT: [],
+	TJAData.BranchType.MASTER: []
+}
+var _has_branch: bool = false
+
 
 func _ready() -> void:
 	_initialize_pool()
@@ -81,24 +90,41 @@ func _return_note_to_pool(note: GameNote) -> void:
 ## 加载谱面数据
 func load_chart(course: TJAData.TJACourse, offset: float = 0.0) -> void:
 	clear_all_notes()
-	
+
+	# 检查是否有分支
+	_has_branch = course.has_branch
+	current_branch = TJAData.BranchType.NORMAL
+
 	# 构建音符队列
 	var current_time = offset
 	var current_bpm = 120.0
 	var current_scroll = 1.0
-	
+
+	# 如果有分支，分别加载各分支的音符
+	if _has_branch:
+		_load_branch_charts(course, offset)
+	else:
+		_load_normal_chart(course, offset)
+
+
+## 加载普通谱面（无分支）
+func _load_normal_chart(course: TJAData.TJACourse, offset: float) -> void:
+	var current_time = offset
+	var current_bpm = 120.0
+	var current_scroll = 1.0
+
 	for measure in course.measures:
 		# 更新BPM和滚动速度
 		current_bpm = measure.bpm
 		current_scroll = measure.scroll
-		
+
 		# 计算小节时长
 		var measure_duration = measure.get_duration()
-		
+
 		# 处理命令
 		for command in measure.commands:
 			_process_command(command, current_time)
-		
+
 		# 生成音符
 		for note in measure.notes:
 			if note.is_hittable():
@@ -109,11 +135,80 @@ func load_chart(course: TJAData.TJACourse, offset: float = 0.0) -> void:
 					"bpm": current_bpm,
 					"scroll": current_scroll
 				})
-		
+
 		current_time += measure_duration
-	
+
 	# 按时间排序
 	_note_queue.sort_custom(func(a, b): return a.hit_time < b.hit_time)
+
+
+## 加载分支谱面
+func _load_branch_charts(course: TJAData.TJACourse, offset: float) -> void:
+	# 清空所有分支队列
+	for branch_type in _branch_note_queues.keys():
+		_branch_note_queues[branch_type] = []
+	
+	# 加载每个分支的音符
+	for branch_type in [TJAData.BranchType.NORMAL, TJAData.BranchType.EXPERT, TJAData.BranchType.MASTER]:
+		var branch_measures = course.get_branch_measures(branch_type)
+		if branch_measures.is_empty():
+			# 如果该分支没有数据，使用普通分支数据
+			branch_measures = course.get_branch_measures(TJAData.BranchType.NORMAL)
+		
+		var current_time = offset
+		var current_bpm = 120.0
+		var current_scroll = 1.0
+		
+		for measure in branch_measures:
+			current_bpm = measure.bpm
+			current_scroll = measure.scroll
+			var measure_duration = measure.get_duration()
+			
+			for note in measure.notes:
+				if note.is_hittable():
+					var note_time = current_time + note.position * measure_duration
+					_branch_note_queues[branch_type].append({
+						"note_data": note,
+						"hit_time": note_time,
+						"bpm": current_bpm,
+						"scroll": current_scroll
+					})
+			
+			current_time += measure_duration
+		
+		# 按时间排序
+		_branch_note_queues[branch_type].sort_custom(func(a, b): return a.hit_time < b.hit_time)
+	
+	# 设置初始音符队列为普通分支
+	_note_queue = _branch_note_queues[TJAData.BranchType.NORMAL].duplicate()
+
+
+## 切换分支
+func switch_branch(new_branch: int) -> void:
+	if not _has_branch:
+		return
+	
+	if new_branch == current_branch:
+		return
+	
+	current_branch = new_branch
+	
+	# 获取当前时间
+	var current_time = _current_time
+	
+	# 切换到新分支的音符队列
+	# 过滤掉已经过去的音符
+	var new_queue: Array = []
+	for note_info in _branch_note_queues[new_branch]:
+		if note_info.hit_time > current_time:
+			new_queue.append(note_info)
+	
+	_note_queue = new_queue
+	
+	# 清除当前活动的音符（需要重新生成）
+	for note in _active_notes:
+		_return_note_to_pool(note)
+	_active_notes.clear()
 
 
 ## 处理命令
@@ -251,9 +346,17 @@ func clear_all_notes() -> void:
 	for note in _active_notes:
 		_return_note_to_pool(note)
 	_active_notes.clear()
-	
+
 	# 清空队列
 	_note_queue.clear()
+
+	# 清空分支队列
+	for branch_type in _branch_note_queues.keys():
+		_branch_note_queues[branch_type] = []
+	
+	# 重置分支状态
+	current_branch = TJAData.BranchType.NORMAL
+	_has_branch = false
 
 
 ## 获取活动音符数量
