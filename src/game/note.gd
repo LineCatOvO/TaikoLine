@@ -44,12 +44,6 @@ var judge_line_x: float = 400.0  ## 判定线X坐标
 const PERFECT_WINDOW: float = 33.0
 const GOOD_WINDOW: float = 100.0
 
-## 颜色配置
-const DON_COLOR := Color(1.0, 0.2, 0.2)      ## 红色
-const KA_COLOR := Color(0.2, 0.4, 1.0)       ## 蓝色
-const DON_BIG_COLOR := Color(1.0, 0.4, 0.4)  ## 大红色
-const KA_BIG_COLOR := Color(0.4, 0.6, 1.0)   ## 大蓝色
-
 
 func _ready() -> void:
 	_setup_components()
@@ -80,55 +74,31 @@ func _setup_collision() -> void:
 
 ## 更新音符外观
 func _update_appearance() -> void:
-	# 根据音符类型设置颜色和大小
-	var color: Color
-	var size: float
+	# 通过SkinManager获取音符类型对应的配置键名
+	var note_type_key := SkinManager.get_note_type_key(note_type)
 	
-	match note_type:
-		TJAData.NoteType.DON:
-			color = DON_COLOR
-			size = 40.0
-		TJAData.NoteType.KA:
-			color = KA_COLOR
-			size = 40.0
-		TJAData.NoteType.DON_BIG:
-			color = DON_BIG_COLOR
-			size = 60.0
-		TJAData.NoteType.KA_BIG:
-			color = KA_BIG_COLOR
-			size = 60.0
-		TJAData.NoteType.RENDA:
-			color = DON_COLOR
-			size = 40.0
-		TJAData.NoteType.RENDA_BIG:
-			color = DON_BIG_COLOR
-			size = 60.0
-		TJAData.NoteType.BALLOON:
-			color = Color(1.0, 0.8, 0.2)
-			size = 50.0
-		TJAData.NoteType.KUSUDAMA:
-			color = Color(0.8, 0.2, 0.8)
-			size = 50.0
-		_:
-			color = Color.WHITE
-			size = 40.0
-	
+	# 从SkinManager获取颜色和大小
+	var color: Color = SkinManager.get_note_color(note_type_key)
+	var size: float = SkinManager.get_note_size(note_type_key)
+	var outline_color: Color = SkinManager.get_note_outline_color(note_type_key)
+	var outline_width: float = SkinManager.get_note_outline_width(note_type_key)
+
 	# 创建简单的圆形纹理
 	var image = Image.create(int(size), int(size), false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
 	var center = Vector2(size / 2.0, size / 2.0)
-	var radius = size / 2.0 - 2.0
-	
+	var radius = size / 2.0 - outline_width
+
 	# 绘制圆形
 	for x in range(int(size)):
 		for y in range(int(size)):
 			var dist = Vector2(x, y).distance_to(center)
 			if dist <= radius:
 				image.set_pixel(x, y, color)
-			elif dist <= radius + 2.0:
-				# 边缘
-				image.set_pixel(x, y, color.darkened(0.3))
-	
+			elif dist <= radius + outline_width:
+				# 边缘（使用轮廓颜色）
+				image.set_pixel(x, y, outline_color)
+
 	var texture = ImageTexture.create_from_image(image)
 	sprite.texture = texture
 

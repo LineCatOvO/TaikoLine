@@ -145,7 +145,9 @@ func _setup_gogo_overlay(parent: Control) -> void:
 	# 创建背景覆盖层
 	_gogo_overlay = ColorRect.new()
 	_gogo_overlay.name = "GogoOverlay"
-	_gogo_overlay.color = Color(1.0, 0.5, 0.0, 0.0)  # 橙色，初始透明
+	# 从SkinManager获取Go-Go覆盖层颜色
+	var gogo_color := SkinManager.get_gogo_overlay_color()
+	_gogo_overlay.color = Color(gogo_color.r, gogo_color.g, gogo_color.b, 0.0)  # 初始透明
 	_gogo_overlay.anchors_preset = Control.PRESET_FULL_RECT
 	_gogo_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(_gogo_overlay)
@@ -175,8 +177,11 @@ func _setup_lyrics_display(parent: Control) -> void:
 ## 设置判定线
 func _setup_judge_line(parent: Control) -> void:
 	_judge_line = ColorRect.new()
-	_judge_line.color = Color(1.0, 0.8, 0.0, 0.8)  # 金色半透明
-	_judge_line.custom_minimum_size = Vector2(4, 300)
+	# 从SkinManager获取判定线颜色和高度
+	var judge_line_color := SkinManager.get_judge_line_color()
+	var judge_line_height := SkinManager.get_judge_line_height()
+	_judge_line.color = Color(judge_line_color.r, judge_line_color.g, judge_line_color.b, 0.8)
+	_judge_line.custom_minimum_size = Vector2(judge_line_height, 300)
 	_judge_line.position = Vector2(JUDGE_LINE_X, 100)
 	parent.add_child(_judge_line)
 
@@ -242,6 +247,9 @@ func _setup_game_controller() -> void:
 func _connect_signals() -> void:
 	# 魂槽信号
 	_soul_gauge.soul_threshold_reached.connect(_on_soul_threshold_reached)
+	
+	# 皮肤切换信号
+	SkinManager.skin_changed.connect(_on_skin_changed)
 
 
 ## 开始游戏
@@ -452,6 +460,25 @@ func _on_soul_threshold_reached() -> void:
 	pass
 
 
+## 皮肤切换回调
+func _on_skin_changed(skin_name: String) -> void:
+	# 更新判定线颜色
+	var judge_line_color := SkinManager.get_judge_line_color()
+	var judge_line_height := SkinManager.get_judge_line_height()
+	_judge_line.color = Color(judge_line_color.r, judge_line_color.g, judge_line_color.b, 0.8)
+	_judge_line.custom_minimum_size = Vector2(judge_line_height, 300)
+	
+	# 更新Go-Go覆盖层颜色
+	var gogo_color := SkinManager.get_gogo_overlay_color()
+	_gogo_overlay.color = Color(gogo_color.r, gogo_color.g, gogo_color.b, _gogo_overlay.color.a)
+	
+	# 如果Go-Go Time正在激活，更新判定线为高亮颜色
+	if _is_gogo_active:
+		var bright_color := Color(judge_line_color.r * 1.1, judge_line_color.g * 1.1, judge_line_color.b * 0.9, 1.0)
+		bright_color = bright_color.clamp()
+		_judge_line.color = bright_color
+
+
 ## Go-Go Time开始回调
 func _on_gogo_started() -> void:
 	_is_gogo_active = true
@@ -477,10 +504,13 @@ func _animate_gogo_start() -> void:
 	# 创建渐变动画
 	var tween = create_tween()
 	tween.tween_property(_gogo_overlay, "color:a", 0.15, 0.3)
-	
-	# 更改判定线颜色为更亮的金色
+
+	# 从SkinManager获取判定线颜色，更亮的版本
+	var judge_line_color := SkinManager.get_judge_line_color()
+	var bright_color := Color(judge_line_color.r * 1.1, judge_line_color.g * 1.1, judge_line_color.b * 0.9, 1.0)
+	bright_color = bright_color.clamp()
 	var judge_tween = create_tween()
-	judge_tween.tween_property(_judge_line, "color", Color(1.0, 0.9, 0.0, 1.0), 0.3)
+	judge_tween.tween_property(_judge_line, "color", bright_color, 0.3)
 
 
 ## Go-Go Time结束动画
@@ -488,10 +518,11 @@ func _animate_gogo_end() -> void:
 	# 创建渐变动画
 	var tween = create_tween()
 	tween.tween_property(_gogo_overlay, "color:a", 0.0, 0.3)
-	
-	# 恢复判定线颜色
+
+	# 从SkinManager获取判定线颜色，恢复原色
+	var judge_line_color := SkinManager.get_judge_line_color()
 	var judge_tween = create_tween()
-	judge_tween.tween_property(_judge_line, "color", Color(1.0, 0.8, 0.0, 0.8), 0.3)
+	judge_tween.tween_property(_judge_line, "color", Color(judge_line_color.r, judge_line_color.g, judge_line_color.b, 0.8), 0.3)
 
 
 ## 更新分支显示
