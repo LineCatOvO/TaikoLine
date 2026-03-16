@@ -316,12 +316,33 @@ func _update_layout() -> void:
 func set_play_position(time: float) -> void:
 	play_position = time
 	queue_redraw()
+	
+	# 自动滚动到播放位置（如果启用）
+	if is_playing and _auto_scroll_enabled:
+		_auto_scroll_to_playhead()
 
 
 ## 设置播放状态
 func set_playing(playing: bool) -> void:
 	is_playing = playing
 	queue_redraw()
+
+
+## 是否启用自动滚动
+var _auto_scroll_enabled: bool = true
+
+
+## 设置自动滚动
+func set_auto_scroll(enabled: bool) -> void:
+	_auto_scroll_enabled = enabled
+
+
+## 自动滚动到播放位置
+func _auto_scroll_to_playhead() -> void:
+	var x = _time_to_x(play_position)
+	if x < 50 or x > size.x - 50:
+		# 播放位置接近边缘时自动滚动
+		scroll_offset += x - size.x / 2
 
 
 ## 设置缩放
