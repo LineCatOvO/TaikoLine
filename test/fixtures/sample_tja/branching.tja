@@ -1,0 +1,18 @@
+// Branching TJA test fixture
+// This file tests branch parsing functionality
+
+TITLE:Branch Test Song
+BPM:120
+OFFSET:0
+
+#START
+1000000000001000,
+#BRANCHSTART P,80,100
+#N
+1000000000001000,
+#E
+1000001000001000,
+#M
+1000001000001001,
+#BRANCHEND
+#END

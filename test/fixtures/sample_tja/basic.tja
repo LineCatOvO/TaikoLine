@@ -1,0 +1,16 @@
+// Basic TJA test fixture
+// This is a minimal TJA file for testing the parser
+
+TITLE:Test Song
+SUBTITLE:--Test Subtitle
+BPM:120
+WAVE:test.ogg
+OFFSET:0
+DEMOSTART:0
+
+#START
+1000000000001000,
+1000000000001000,
+1000000000001000,
+1000000000001000,
+#END
