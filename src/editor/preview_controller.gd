@@ -2,6 +2,7 @@ class_name PreviewController
 extends Node
 ## 预览控制器
 ## 管理谱面预览播放、暂停、停止、位置控制和速度调整
+## 支持音频同步播放
 
 const EditorData = preload("res://src/editor/editor_data.gd")
 
@@ -11,9 +12,19 @@ signal playback_stopped()
 signal playback_paused()
 signal position_changed(time: float)
 signal speed_changed(speed: float)
+signal audio_loaded(path: String)
+signal audio_unloaded()
+signal audio_load_failed(error: String)
 
 ## 编辑器控制器引用
 var editor_controller: EditorController = null
+
+## 音频相关属性
+var audio_stream: AudioStream = null
+var audio_player: AudioStreamPlayer = null
+var audio_offset: float = 0.0  ## 音频偏移（秒）
+var is_audio_loaded: bool = false
+var audio_file_path: String = ""
 
 ## 播放状态枚举
 enum PlaybackState {
@@ -55,6 +66,15 @@ var _last_update_time: float = 0.0
 
 func _ready() -> void:
 	set_process(false)
+	_setup_audio_player()
+
+
+## 设置音频播放器
+func _setup_audio_player() -> void:
+	audio_player = AudioStreamPlayer.new()
+	audio_player.bus = "Master"
+	audio_player.volume_db = 0.0
+	add_child(audio_player)
 
 
 func _process(delta: float) -> void:
@@ -96,10 +116,16 @@ func set_editor_controller(controller: EditorController) -> void:
 func play() -> void:
 	if editor_controller == null:
 		return
-	
+
 	current_state = PlaybackState.PLAYING
 	_last_update_time = Time.get_ticks_msec() / 1000.0
 	set_process(true)
+	
+	# 同步播放音频
+	if is_audio_loaded and audio_player:
+		audio_player.play()
+		audio_player.seek(current_position + audio_offset)
+	
 	playback_started.emit()
 
 
@@ -107,9 +133,14 @@ func play() -> void:
 func pause() -> void:
 	if current_state != PlaybackState.PLAYING:
 		return
-	
+
 	current_state = PlaybackState.PAUSED
 	set_process(false)
+	
+	# 暂停音频
+	if is_audio_loaded and audio_player:
+		audio_player.stream_paused = true
+	
 	playback_paused.emit()
 
 
@@ -118,6 +149,12 @@ func stop() -> void:
 	current_state = PlaybackState.STOPPED
 	current_position = 0.0
 	set_process(false)
+	
+	# 停止音频
+	if is_audio_loaded and audio_player:
+		audio_player.stop()
+		audio_player.stream_paused = false
+	
 	playback_stopped.emit()
 	position_changed.emit(0.0)
 
@@ -134,6 +171,10 @@ func toggle_play_pause() -> void:
 ## 设置播放位置（秒）
 func set_position(time: float) -> void:
 	current_position = clamp(time, 0.0, total_duration)
+	
+	# 同步音频位置
+	_sync_audio_position()
+	
 	position_changed.emit(current_position)
 
 
@@ -308,11 +349,136 @@ func _update_total_duration() -> void:
 	if editor_controller == null:
 		total_duration = 0.0
 		return
-	
+
 	var course = editor_controller.get_current_course()
 	if course == null:
 		total_duration = 0.0
 		return
-	
+
 	total_duration = course.get_total_duration()
 	loop_end = total_duration
+
+
+## ========== 音频相关方法 ==========
+
+## 加载音频文件
+## 支持格式：OGG, MP3, WAV
+func load_audio(path: String) -> bool:
+	# 检查文件是否存在
+	if not FileAccess.file_exists(path):
+		audio_load_failed.emit("文件不存在: " + path)
+		return false
+	
+	# 检查文件扩展名
+	var ext = path.get_extension().to_lower()
+	if ext not in ["ogg", "mp3", "wav"]:
+		audio_load_failed.emit("不支持的音频格式: " + ext)
+		return false
+	
+	# 卸载现有音频
+	if is_audio_loaded:
+		unload_audio()
+	
+	# 加载音频流
+	match ext:
+		"ogg":
+			audio_stream = AudioStreamOggVorbis.load_from_file(path)
+		"mp3":
+			audio_stream = AudioStreamMP3.load_from_file(path)
+		"wav":
+			audio_stream = AudioStreamWAV.load_from_file(path)
+		_:
+			audio_load_failed.emit("无法加载音频格式: " + ext)
+			return false
+	
+	if audio_stream == null:
+		audio_load_failed.emit("音频加载失败: " + path)
+		return false
+	
+	# 设置音频播放器
+	audio_player.stream = audio_stream
+	audio_file_path = path
+	is_audio_loaded = true
+	
+	# 更新总时长（如果音频时长大于当前时长）
+	var audio_duration = get_audio_duration()
+	if audio_duration > total_duration:
+		total_duration = audio_duration
+		loop_end = total_duration
+	
+	audio_loaded.emit(path)
+	return true
+
+
+## 卸载音频
+func unload_audio() -> void:
+	if audio_player:
+		audio_player.stop()
+		audio_player.stream = null
+	
+	audio_stream = null
+	audio_file_path = ""
+	is_audio_loaded = false
+	audio_offset = 0.0
+	
+	audio_unloaded.emit()
+
+
+## 获取音频时长（秒）
+func get_audio_duration() -> float:
+	if audio_stream == null:
+		return 0.0
+	return audio_stream.get_length()
+
+
+## 同步音频位置
+func _sync_audio_position() -> void:
+	if not is_audio_loaded or audio_player == null:
+		return
+	
+	if current_state == PlaybackState.PLAYING:
+		audio_player.seek(current_position + audio_offset)
+	elif current_state == PlaybackState.PAUSED:
+		# 暂停状态下也需要更新位置
+		audio_player.seek(current_position + audio_offset)
+
+
+## 设置音频偏移（秒）
+func set_audio_offset(offset: float) -> void:
+	audio_offset = offset
+	# 如果正在播放，重新同步
+	if current_state == PlaybackState.PLAYING:
+		_sync_audio_position()
+
+
+## 设置音频音量（分贝）
+func set_audio_volume(volume_db: float) -> void:
+	if audio_player:
+		audio_player.volume_db = volume_db
+
+
+## 获取音频音量（分贝）
+func get_audio_volume() -> float:
+	if audio_player:
+		return audio_player.volume_db
+	return 0.0
+
+
+## 静音音频
+func set_audio_muted(muted: bool) -> void:
+	if audio_player:
+		audio_player.volume_db = -80.0 if muted else 0.0
+
+
+## 是否音频已静音
+func is_audio_muted() -> bool:
+	if audio_player:
+		return audio_player.volume_db <= -80.0
+	return false
+
+
+## 获取音频文件名
+func get_audio_filename() -> String:
+	if audio_file_path.is_empty():
+		return ""
+	return audio_file_path.get_file()

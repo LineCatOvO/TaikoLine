@@ -6,6 +6,8 @@ const EditorController = preload("res://src/editor/editor_controller.gd")
 const EditorData = preload("res://src/editor/editor_data.gd")
 const TimelineView = preload("res://src/editor/timeline_view.gd")
 const PreviewController = preload("res://src/editor/preview_controller.gd")
+const BranchEditor = preload("res://src/editor/branch_editor.gd")
+const Metronome = preload("res://src/editor/metronome.gd")
 
 ## 控制器引用
 @onready var controller: EditorController = $EditorController
@@ -28,6 +30,11 @@ var stop_button: Button = null
 var speed_option: OptionButton = null
 var position_label: Label = null
 
+## 分支编辑器
+var branch_editor: BranchEditor = null
+var branch_toolbar: HBoxContainer = null
+var branch_buttons: ButtonGroup = null
+
 ## 音符选择按钮组
 var note_buttons: ButtonGroup
 
@@ -40,6 +47,17 @@ var is_modified: bool = false
 ## 当前选中的小节索引（-1表示无选中）
 var selected_measure_index: int = -1
 
+## 音频相关属性
+var audio_file_path: String = ""
+var audio_file_dialog: FileDialog = null
+
+## 节拍器
+var metronome: Metronome = null
+
+## 网格设置
+var grid_subdivision: int = 16  ## 网格细分（4, 8, 16, 32）
+var snap_enabled: bool = true   ## 吸附开关
+
 ## 属性面板控件引用
 var bpm_spinbox: SpinBox = null
 var scroll_spinbox: SpinBox = null
@@ -47,11 +65,23 @@ var time_signature_numerator: SpinBox = null
 var time_signature_denominator: SpinBox = null
 var gogo_checkbox: CheckBox = null
 
+## 音频控制UI控件
+var audio_volume_slider: HSlider = null
+var audio_mute_button: Button = null
+var audio_status_label: Label = null
+
+## 网格设置UI控件
+var grid_subdivision_option: OptionButton = null
+var snap_checkbox: CheckBox = null
+
 
 func _ready() -> void:
 	_setup_ui()
 	_connect_signals()
 	_setup_note_buttons()
+	_setup_audio_dialog()
+	_setup_metronome()
+	_setup_grid_ui()
 	_update_ui()
 
 
@@ -62,14 +92,23 @@ func _setup_ui() -> void:
 
 	# 创建音符按钮组
 	note_buttons = ButtonGroup.new()
-	
+
+	# 创建分支按钮组
+	branch_buttons = ButtonGroup.new()
+
 	# 创建预览控制器
 	preview_controller = PreviewController.new()
 	preview_controller.set_editor_controller(controller)
 	add_child(preview_controller)
-	
+
 	# 创建播放控制工具栏
 	_setup_playback_toolbar()
+
+	# 创建分支工具栏
+	_setup_branch_toolbar()
+
+	# 创建分支编辑器
+	_setup_branch_editor()
 
 
 ## 连接信号
@@ -79,10 +118,13 @@ func _connect_signals() -> void:
 		controller.selection_changed.connect(_on_selection_changed)
 		controller.project_loaded.connect(_on_project_loaded)
 		controller.project_saved.connect(_on_project_saved)
+		controller.branch_changed.connect(_on_branch_changed)
+		controller.branch_condition_added.connect(_on_branch_condition_added)
+		controller.branch_condition_removed.connect(_on_branch_condition_removed)
 
 	if timeline_view:
 		timeline_view.measure_clicked.connect(_on_measure_clicked)
-	
+
 	# 连接预览控制器信号
 	if preview_controller:
 		preview_controller.playback_started.connect(_on_playback_started)
@@ -90,6 +132,15 @@ func _connect_signals() -> void:
 		preview_controller.playback_paused.connect(_on_playback_paused)
 		preview_controller.position_changed.connect(_on_playback_position_changed)
 		preview_controller.speed_changed.connect(_on_playback_speed_changed)
+		preview_controller.audio_loaded.connect(_on_audio_loaded)
+		preview_controller.audio_unloaded.connect(_on_audio_unloaded)
+		preview_controller.audio_load_failed.connect(_on_audio_load_failed)
+
+	# 连接分支编辑器信号
+	if branch_editor:
+		branch_editor.branch_selected.connect(_on_branch_selected)
+		branch_editor.condition_added.connect(_on_condition_added)
+		branch_editor.condition_removed.connect(_on_condition_removed)
 
 
 ## 设置播放控制工具栏
@@ -97,41 +148,41 @@ func _setup_playback_toolbar() -> void:
 	# 创建播放控制工具栏容器
 	playback_toolbar = HBoxContainer.new()
 	playback_toolbar.name = "PlaybackToolbar"
-	
+
 	# 添加分隔符
 	var separator1 = VSeparator.new()
 	playback_toolbar.add_child(separator1)
-	
+
 	# 播放按钮
 	play_button = Button.new()
 	play_button.text = "▶"
 	play_button.tooltip_text = "播放 (Space)"
 	play_button.pressed.connect(_on_play_button_pressed)
 	playback_toolbar.add_child(play_button)
-	
+
 	# 暂停按钮
 	pause_button = Button.new()
 	pause_button.text = "⏸"
 	pause_button.tooltip_text = "暂停"
 	pause_button.pressed.connect(_on_pause_button_pressed)
 	playback_toolbar.add_child(pause_button)
-	
+
 	# 停止按钮
 	stop_button = Button.new()
 	stop_button.text = "⏹"
 	stop_button.tooltip_text = "停止"
 	stop_button.pressed.connect(_on_stop_button_pressed)
 	playback_toolbar.add_child(stop_button)
-	
+
 	# 添加分隔符
 	var separator2 = VSeparator.new()
 	playback_toolbar.add_child(separator2)
-	
+
 	# 播放速度选择器
 	var speed_label = Label.new()
 	speed_label.text = "速度:"
 	playback_toolbar.add_child(speed_label)
-	
+
 	speed_option = OptionButton.new()
 	speed_option.tooltip_text = "选择播放速度"
 	var speed_names = preview_controller.get_speed_option_names()
@@ -140,21 +191,28 @@ func _setup_playback_toolbar() -> void:
 	speed_option.selected = preview_controller.get_speed_index()
 	speed_option.item_selected.connect(_on_speed_option_selected)
 	playback_toolbar.add_child(speed_option)
-	
+
 	# 添加分隔符
 	var separator3 = VSeparator.new()
 	playback_toolbar.add_child(separator3)
-	
+
 	# 当前位置显示
 	var pos_label_title = Label.new()
 	pos_label_title.text = "位置:"
 	playback_toolbar.add_child(pos_label_title)
-	
+
 	position_label = Label.new()
 	position_label.text = "00:00.00 / 00:00.00"
 	position_label.custom_minimum_size.x = 130
 	playback_toolbar.add_child(position_label)
-	
+
+	# 添加分隔符
+	var separator4 = VSeparator.new()
+	playback_toolbar.add_child(separator4)
+
+	# 音频控制区域
+	_setup_audio_controls()
+
 	# 将播放控制工具栏添加到工具栏
 	toolbar.add_child(playback_toolbar)
 
@@ -210,6 +268,10 @@ func _on_menu_item_pressed(id: int) -> void:
 			_save_project_as()
 		4:  # 退出
 			_quit_editor()
+		5:  # 加载音频
+			_on_load_audio_pressed()
+		6:  # 卸载音频
+			_on_unload_audio_pressed()
 		10: # 撤销
 			_undo()
 		11: # 重做
@@ -724,6 +786,18 @@ func _input(event: InputEvent) -> void:
 				# End键：跳转到结尾
 				if preview_controller:
 					preview_controller.jump_to_end()
+			KEY_N:
+				# Alt+N: 切换到Normal分支
+				if event.alt_pressed and not event.ctrl_pressed and not event.shift_pressed:
+					controller.switch_branch(EditorData.BranchType.NORMAL)
+			KEY_E:
+				# Alt+E: 切换到Expert分支
+				if event.alt_pressed and not event.ctrl_pressed and not event.shift_pressed:
+					controller.switch_branch(EditorData.BranchType.EXPERT)
+			KEY_M:
+				# Alt+M: 切换到Master分支
+				if event.alt_pressed and not event.ctrl_pressed and not event.shift_pressed:
+					controller.switch_branch(EditorData.BranchType.MASTER)
 
 
 ## 处理音符快捷键
@@ -922,3 +996,381 @@ func _update_position_display(time: float) -> void:
 			preview_controller.get_formatted_position(),
 			preview_controller.get_formatted_duration()
 		]
+
+
+## ========== 分支相关方法 ==========
+
+## 设置分支工具栏
+func _setup_branch_toolbar() -> void:
+	# 创建分支工具栏容器
+	branch_toolbar = HBoxContainer.new()
+	branch_toolbar.name = "BranchToolbar"
+
+	# 添加分隔符
+	var separator1 = VSeparator.new()
+	branch_toolbar.add_child(separator1)
+
+	# 分支标签
+	var branch_label = Label.new()
+	branch_label.text = "分支:"
+	branch_toolbar.add_child(branch_label)
+
+	# Normal分支按钮
+	var normal_btn = Button.new()
+	normal_btn.text = "#N"
+	normal_btn.tooltip_text = "普通分支 (Normal) - 快捷键: Alt+N"
+	normal_btn.toggle_mode = true
+	normal_btn.button_group = branch_buttons
+	normal_btn.button_pressed = true
+	normal_btn.pressed.connect(_on_branch_button_pressed.bind(EditorData.BranchType.NORMAL))
+	branch_toolbar.add_child(normal_btn)
+
+	# Expert分支按钮
+	var expert_btn = Button.new()
+	expert_btn.text = "#E"
+	expert_btn.tooltip_text = "高级分支 (Expert) - 快捷键: Alt+E"
+	expert_btn.toggle_mode = true
+	expert_btn.button_group = branch_buttons
+	expert_btn.pressed.connect(_on_branch_button_pressed.bind(EditorData.BranchType.EXPERT))
+	branch_toolbar.add_child(expert_btn)
+
+	# Master分支按钮
+	var master_btn = Button.new()
+	master_btn.text = "#M"
+	master_btn.tooltip_text = "大师分支 (Master) - 快捷键: Alt+M"
+	master_btn.toggle_mode = true
+	master_btn.button_group = branch_buttons
+	master_btn.pressed.connect(_on_branch_button_pressed.bind(EditorData.BranchType.MASTER))
+	branch_toolbar.add_child(master_btn)
+
+	# 添加分隔符
+	var separator2 = VSeparator.new()
+	branch_toolbar.add_child(separator2)
+
+	# 启用分支按钮
+	var enable_branch_btn = Button.new()
+	enable_branch_btn.text = "启用分支"
+	enable_branch_btn.tooltip_text = "为当前难度启用分支模式"
+	enable_branch_btn.pressed.connect(_on_enable_branch_pressed)
+	branch_toolbar.add_child(enable_branch_btn)
+
+	# 将分支工具栏添加到工具栏
+	toolbar.add_child(branch_toolbar)
+
+
+## 设置分支编辑器
+func _setup_branch_editor() -> void:
+	branch_editor = BranchEditor.new()
+	branch_editor.name = "BranchEditor"
+	branch_editor.custom_minimum_size.x = 200
+
+	# 添加到属性面板
+	property_panel.add_child(branch_editor)
+
+
+## 分支按钮按下回调
+func _on_branch_button_pressed(branch_type: int) -> void:
+	controller.switch_branch(branch_type)
+
+
+## 启用分支按钮按下回调
+func _on_enable_branch_pressed() -> void:
+	controller.enable_branch_mode()
+
+
+## 分支变更回调
+func _on_branch_changed(new_branch: int) -> void:
+	# 更新分支编辑器
+	if branch_editor:
+		branch_editor.set_current_branch(new_branch)
+
+	# 更新分支按钮状态
+	_update_branch_button_state(new_branch)
+
+
+## 更新分支按钮状态
+func _update_branch_button_state(branch_type: int) -> void:
+	if branch_buttons == null:
+		return
+
+	var buttons = branch_buttons.get_buttons()
+	var index = 0
+	for btn in buttons:
+		if index == branch_type:
+			btn.button_pressed = true
+			break
+		index += 1
+
+
+## 分支条件添加回调
+func _on_branch_condition_added(condition: EditorData.EditorBranchCondition) -> void:
+	if branch_editor:
+		branch_editor.update_conditions(controller.get_branch_conditions())
+
+
+## 分支条件移除回调
+func _on_branch_condition_removed(index: int) -> void:
+	if branch_editor:
+		branch_editor.update_conditions(controller.get_branch_conditions())
+
+
+## 分支编辑器 - 分支选择回调
+func _on_branch_selected(branch_type: int) -> void:
+	controller.switch_branch(branch_type)
+
+
+## 分支编辑器 - 条件添加回调
+func _on_condition_added(condition: EditorData.EditorBranchCondition) -> void:
+	controller.add_branch_condition(
+		condition.measure_index,
+		condition.condition_type,
+		condition.normal_threshold,
+		condition.expert_threshold
+	)
+
+
+## 分支编辑器 - 条件移除回调
+func _on_condition_removed(index: int) -> void:
+	controller.remove_branch_condition(index)
+
+
+## ========== 音频相关方法 ==========
+
+## 设置音频文件对话框
+func _setup_audio_dialog() -> void:
+	audio_file_dialog = FileDialog.new()
+	audio_file_dialog.name = "AudioFileDialog"
+	audio_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	audio_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	audio_file_dialog.title = "选择音频文件"
+	audio_file_dialog.filters = ["*.ogg ; OGG Vorbis", "*.mp3 ; MP3 Audio", "*.wav ; WAV Audio"]
+	audio_file_dialog.file_selected.connect(_on_audio_file_selected)
+	add_child(audio_file_dialog)
+
+
+## 设置节拍器
+func _setup_metronome() -> void:
+	metronome = Metronome.new()
+	metronome.name = "Metronome"
+	metronome.enabled = false
+	add_child(metronome)
+
+
+## 设置网格UI
+func _setup_grid_ui() -> void:
+	# 创建网格设置容器
+	var grid_container = HBoxContainer.new()
+	grid_container.name = "GridSettings"
+
+	# 添加分隔符
+	var separator1 = VSeparator.new()
+	grid_container.add_child(separator1)
+
+	# 网格细分标签
+	var grid_label = Label.new()
+	grid_label.text = "网格:"
+	grid_container.add_child(grid_label)
+
+	# 网格细分选择器
+	grid_subdivision_option = OptionButton.new()
+	grid_subdivision_option.tooltip_text = "选择网格细分"
+	grid_subdivision_option.add_item("1/4")
+	grid_subdivision_option.add_item("1/8")
+	grid_subdivision_option.add_item("1/16")
+	grid_subdivision_option.add_item("1/32")
+	grid_subdivision_option.selected = 2  # 默认1/16
+	grid_subdivision_option.item_selected.connect(_on_grid_subdivision_changed)
+	grid_container.add_child(grid_subdivision_option)
+
+	# 吸附开关
+	snap_checkbox = CheckBox.new()
+	snap_checkbox.text = "吸附"
+	snap_checkbox.button_pressed = snap_enabled
+	snap_checkbox.tooltip_text = "启用/禁用网格吸附"
+	snap_checkbox.toggled.connect(_on_snap_toggled)
+	grid_container.add_child(snap_checkbox)
+
+	# 将网格设置添加到工具栏
+	toolbar.add_child(grid_container)
+
+
+## 设置音频控制UI
+func _setup_audio_controls() -> void:
+	# 音频状态标签
+	audio_status_label = Label.new()
+	audio_status_label.text = "无音频"
+	audio_status_label.tooltip_text = "当前音频状态"
+	audio_status_label.custom_minimum_size.x = 80
+	playback_toolbar.add_child(audio_status_label)
+
+	# 音量控制
+	var volume_label = Label.new()
+	volume_label.text = "音量:"
+	playback_toolbar.add_child(volume_label)
+
+	audio_volume_slider = HSlider.new()
+	audio_volume_slider.min_value = -40.0
+	audio_volume_slider.max_value = 6.0
+	audio_volume_slider.value = 0.0
+	audio_volume_slider.step = 1.0
+	audio_volume_slider.custom_minimum_size.x = 80
+	audio_volume_slider.tooltip_text = "调整音频音量"
+	audio_volume_slider.value_changed.connect(_on_audio_volume_changed)
+	audio_volume_slider.editable = false  # 默认禁用，加载音频后启用
+	playback_toolbar.add_child(audio_volume_slider)
+
+	# 静音按钮
+	audio_mute_button = Button.new()
+	audio_mute_button.text = "🔊"
+	audio_mute_button.tooltip_text = "静音/取消静音"
+	audio_mute_button.toggle_mode = true
+	audio_mute_button.button_pressed = false
+	audio_mute_button.pressed.connect(_on_audio_mute_toggled)
+	audio_mute_button.disabled = true  # 默认禁用，加载音频后启用
+	playback_toolbar.add_child(audio_mute_button)
+
+
+## 加载音频菜单项
+func _on_load_audio_pressed() -> void:
+	if audio_file_dialog:
+		audio_file_dialog.popup_centered(Vector2i(800, 600))
+
+
+## 音频文件选择回调
+func _on_audio_file_selected(path: String) -> void:
+	if preview_controller == null:
+		return
+
+	if preview_controller.load_audio(path):
+		audio_file_path = path
+		_update_audio_status()
+		_enable_audio_controls(true)
+		
+		# 更新项目数据
+		var project = controller.get_project()
+		if project != null:
+			project.audio_file = path
+			is_modified = true
+			_update_ui()
+	else:
+		# 显示错误提示
+		print("音频加载失败: ", path)
+
+
+## 卸载音频菜单项
+func _on_unload_audio_pressed() -> void:
+	if preview_controller == null:
+		return
+
+	preview_controller.unload_audio()
+	audio_file_path = ""
+	_update_audio_status()
+	_enable_audio_controls(false)
+
+	# 更新项目数据
+	var project = controller.get_project()
+	if project != null:
+		project.audio_file = ""
+		is_modified = true
+		_update_ui()
+
+
+## 更新音频状态显示
+func _update_audio_status() -> void:
+	if audio_status_label == null:
+		return
+
+	if preview_controller and preview_controller.is_audio_loaded:
+		audio_status_label.text = preview_controller.get_audio_filename()
+		audio_status_label.tooltip_text = "已加载: " + preview_controller.audio_file_path
+	else:
+		audio_status_label.text = "无音频"
+		audio_status_label.tooltip_text = "当前音频状态"
+
+
+## 启用/禁用音频控制
+func _enable_audio_controls(enabled: bool) -> void:
+	if audio_volume_slider:
+		audio_volume_slider.editable = enabled
+	if audio_mute_button:
+		audio_mute_button.disabled = not enabled
+
+
+## 音频音量变更回调
+func _on_audio_volume_changed(value: float) -> void:
+	if preview_controller:
+		preview_controller.set_audio_volume(value)
+
+
+## 音频静音切换回调
+func _on_audio_mute_toggled() -> void:
+	if preview_controller == null or audio_mute_button == null:
+		return
+
+	var muted = audio_mute_button.button_pressed
+	preview_controller.set_audio_muted(muted)
+	audio_mute_button.text = "🔇" if muted else "🔊"
+
+
+## ========== 网格设置方法 ==========
+
+## 网格细分变更回调
+func _on_grid_subdivision_changed(index: int) -> void:
+	match index:
+		0: grid_subdivision = 4
+		1: grid_subdivision = 8
+		2: grid_subdivision = 16
+		3: grid_subdivision = 32
+		_: grid_subdivision = 16
+
+	# 通知时间线视图更新
+	if timeline_view:
+		timeline_view.set_grid_subdivision(grid_subdivision)
+
+
+## 吸附开关切换回调
+func _on_snap_toggled(enabled: bool) -> void:
+	snap_enabled = enabled
+
+	# 通知时间线视图更新
+	if timeline_view:
+		timeline_view.set_snap_enabled(snap_enabled)
+
+
+## 获取当前网格细分
+func get_grid_subdivision() -> int:
+	return grid_subdivision
+
+
+## 获取吸附状态
+func is_snap_enabled() -> bool:
+	return snap_enabled
+
+
+## 将位置吸附到网格
+func snap_to_grid(position: float) -> float:
+	if not snap_enabled:
+		return position
+
+	# 计算网格间隔（在小节内的位置，0.0-1.0）
+	var grid_step = 1.0 / float(grid_subdivision)
+	return round(position / grid_step) * grid_step
+
+
+## ========== 音频信号回调 ==========
+
+## 音频加载成功回调
+func _on_audio_loaded(path: String) -> void:
+	_update_audio_status()
+	print("音频加载成功: ", path)
+
+
+## 音频卸载回调
+func _on_audio_unloaded() -> void:
+	_update_audio_status()
+
+
+## 音频加载失败回调
+func _on_audio_load_failed(error: String) -> void:
+	print("音频加载失败: ", error)
+	# 可以在这里显示错误对话框

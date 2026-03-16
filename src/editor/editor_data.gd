@@ -131,6 +131,50 @@ class EditorMeasure:
 		var beats_per_measure = time_signature.x / time_signature.y * 4.0
 		return 60.0 / bpm * beats_per_measure
 
+## 分支条件类型
+enum BranchConditionType {
+	ACCURACY = 0,   ## 精度分支
+	RENDA = 1,      ## 连打分支
+	SCORE = 2       ## 分数分支
+}
+
+## 编辑器分支条件
+class EditorBranchCondition:
+	## 小节索引
+	var measure_index: int = 0
+	## 条件类型 (0=精度, 1=连打, 2=分数)
+	var condition_type: int = BranchConditionType.ACCURACY
+	## 普通阈值
+	var normal_threshold: float = 0.0
+	## 高级阈值
+	var expert_threshold: float = 0.0
+
+	func _init(p_measure: int = 0, p_type: int = BranchConditionType.ACCURACY, p_normal: float = 0.0, p_expert: float = 0.0) -> void:
+		measure_index = p_measure
+		condition_type = p_type
+		normal_threshold = p_normal
+		expert_threshold = p_expert
+
+	## 获取条件类型名称
+	func get_condition_type_name() -> String:
+		match condition_type:
+			BranchConditionType.ACCURACY: return "精度"
+			BranchConditionType.RENDA: return "连打"
+			BranchConditionType.SCORE: return "分数"
+			_: return "未知"
+
+	## 转换为TJA格式字符串
+	func to_tja_string() -> String:
+		match condition_type:
+			BranchConditionType.ACCURACY:
+				return "#BRANCHSTART p,%.0f,%.0f" % [normal_threshold, expert_threshold]
+			BranchConditionType.RENDA:
+				return "#BRANCHSTART r,%d,%d" % [int(normal_threshold), int(expert_threshold)]
+			BranchConditionType.SCORE:
+				return "#BRANCHSTART s,%d,%d" % [int(normal_threshold), int(expert_threshold)]
+			_:
+				return ""
+
 ## 编辑器命令（用于撤销/重做）
 class EditorCommand:
 	## 命令类型
@@ -145,7 +189,10 @@ class EditorCommand:
 		CHANGE_SCROLL,
 		CHANGE_TIME_SIGNATURE,
 		TOGGLE_GOGO,
-		TOGGLE_BARLINE
+		TOGGLE_BARLINE,
+		ADD_BRANCH_CONDITION,
+		REMOVE_BRANCH_CONDITION,
+		SWITCH_BRANCH
 	}
 
 	var command_type: CommandType
@@ -188,6 +235,13 @@ class EditorSongMeta:
 	func _init() -> void:
 		pass
 
+## 分支类型常量
+enum BranchType {
+	NORMAL = 0,  ## 普通分支
+	EXPERT = 1,  ## 高级分支
+	MASTER = 2   ## 大师分支
+}
+
 ## 编辑器难度数据
 class EditorCourse:
 	## 难度类型
@@ -206,6 +260,14 @@ class EditorCourse:
 	var measures: Array[EditorMeasure] = []
 	## 是否有分支
 	var has_branch: bool = false
+	## 分支小节数据 (0=NORMAL, 1=EXPERT, 2=MASTER)
+	var branch_measures: Dictionary = {
+		BranchType.NORMAL: [],
+		BranchType.EXPERT: [],
+		BranchType.MASTER: []
+	}
+	## 分支条件列表
+	var branch_conditions: Array = []  # Array[EditorBranchCondition]
 
 	func _init(p_type: TJAData.CourseType = TJAData.CourseType.ONI) -> void:
 		course_type = p_type
@@ -272,6 +334,10 @@ class EditorProject:
 	var modified: bool = false
 	## 下一个音符ID
 	var _next_note_id: int = 1
+	## 音频文件路径（相对或绝对）
+	var audio_file: String = ""
+	## 音频偏移（秒）
+	var audio_offset: float = 0.0
 
 	func _init() -> void:
 		song_meta = EditorSongMeta.new()

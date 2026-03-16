@@ -19,6 +19,9 @@ signal data_changed()
 signal selection_changed(selected_notes: Array)
 signal project_loaded(project: EditorData.EditorProject)
 signal project_saved(file_path: String)
+signal branch_changed(new_branch: int)
+signal branch_condition_added(condition: EditorData.EditorBranchCondition)
+signal branch_condition_removed(index: int)
 
 ## 编辑器状态枚举
 enum EditorState {
@@ -51,6 +54,9 @@ const MAX_UNDO_STEPS: int = 100
 
 ## 复制缓冲区
 var _clipboard: Array[EditorData.EditorNote] = []
+
+## 当前编辑的分支 (0=NORMAL, 1=EXPERT, 2=MASTER)
+var current_branch: int = EditorData.BranchType.NORMAL
 
 
 func _ready() -> void:
@@ -786,3 +792,201 @@ func is_modified() -> bool:
 ## 获取选中音符数量
 func get_selection_count() -> int:
 	return selected_notes.size()
+
+
+## ========== 分支相关方法 ==========
+
+## 切换分支
+func switch_branch(branch_type: int) -> void:
+	if branch_type < 0 or branch_type > 2:
+		return
+
+	var old_branch = current_branch
+	current_branch = branch_type
+
+	# 如果课程有分支，切换到对应分支的小节数据
+	var course = get_current_course()
+	if course != null and course.has_branch:
+		# 保存当前分支的小节数据
+		if old_branch != current_branch:
+			course.branch_measures[old_branch] = course.measures.duplicate(true)
+
+		# 加载目标分支的小节数据
+		if course.branch_measures[branch_type].size() > 0:
+			course.measures = course.branch_measures[branch_type].duplicate(true)
+		else:
+			# 如果目标分支没有数据，复制普通分支的数据
+			if course.branch_measures[EditorData.BranchType.NORMAL].size() > 0:
+				course.measures = course.branch_measures[EditorData.BranchType.NORMAL].duplicate(true)
+
+	# 清除选择
+	deselect_all()
+
+	# 发送信号
+	branch_changed.emit(current_branch)
+	data_changed.emit()
+
+
+## 添加分支条件
+func add_branch_condition(measure_index: int, condition_type: int, normal_threshold: float, expert_threshold: float) -> void:
+	if project == null:
+		return
+
+	var course = get_current_course()
+	if course == null:
+		return
+
+	# 创建分支条件
+	var condition = EditorData.EditorBranchCondition.new(measure_index, condition_type, normal_threshold, expert_threshold)
+
+	# 添加到条件列表
+	course.branch_conditions.append(condition)
+	course.has_branch = true
+
+	# 初始化分支小节数据
+	if course.branch_measures[EditorData.BranchType.NORMAL].is_empty():
+		course.branch_measures[EditorData.BranchType.NORMAL] = course.measures.duplicate(true)
+	if course.branch_measures[EditorData.BranchType.EXPERT].is_empty():
+		course.branch_measures[EditorData.BranchType.EXPERT] = course.measures.duplicate(true)
+	if course.branch_measures[EditorData.BranchType.MASTER].is_empty():
+		course.branch_measures[EditorData.BranchType.MASTER] = course.measures.duplicate(true)
+
+	# 执行命令
+	var cmd = EditorData.EditorCommand.new(
+		EditorData.EditorCommand.CommandType.ADD_BRANCH_CONDITION,
+		condition,
+		null,
+		{"measure": measure_index, "type": condition_type, "normal": normal_threshold, "expert": expert_threshold}
+	)
+	cmd.description = "添加分支条件"
+
+	_execute_command(cmd)
+	project.mark_modified()
+	branch_condition_added.emit(condition)
+	data_changed.emit()
+
+
+## 移除分支条件
+func remove_branch_condition(index: int) -> void:
+	if project == null:
+		return
+
+	var course = get_current_course()
+	if course == null:
+		return
+
+	if index < 0 or index >= course.branch_conditions.size():
+		return
+
+	var condition = course.branch_conditions[index]
+
+	# 执行命令
+	var cmd = EditorData.EditorCommand.new(
+		EditorData.EditorCommand.CommandType.REMOVE_BRANCH_CONDITION,
+		condition,
+		{"index": index, "condition": condition},
+		null
+	)
+	cmd.description = "移除分支条件"
+
+	course.branch_conditions.remove_at(index)
+
+	# 如果没有分支条件了，清除分支标记
+	if course.branch_conditions.is_empty():
+		course.has_branch = false
+
+	_execute_command(cmd)
+	project.mark_modified()
+	branch_condition_removed.emit(index)
+	data_changed.emit()
+
+
+## 获取当前分支
+func get_current_branch() -> int:
+	return current_branch
+
+
+## 获取分支条件列表
+func get_branch_conditions() -> Array:
+	var course = get_current_course()
+	if course == null:
+		return []
+	return course.branch_conditions
+
+
+## 复制小节到所有分支
+func copy_measure_to_all_branches(measure_index: int) -> void:
+	if project == null:
+		return
+
+	var course = get_current_course()
+	if course == null:
+		return
+
+	if measure_index < 0 or measure_index >= course.measures.size():
+		return
+
+	if not course.has_branch:
+		return
+
+	var source_measure = course.measures[measure_index]
+
+	# 复制到所有分支
+	for branch_type in [EditorData.BranchType.NORMAL, EditorData.BranchType.EXPERT, EditorData.BranchType.MASTER]:
+		if branch_type != current_branch:
+			if course.branch_measures[branch_type].size() > measure_index:
+				course.branch_measures[branch_type][measure_index] = source_measure.duplicate(true)
+
+	project.mark_modified()
+	data_changed.emit()
+
+
+## 启用分支模式
+func enable_branch_mode() -> void:
+	var course = get_current_course()
+	if course == null:
+		return
+
+	if course.has_branch:
+		return
+
+	course.has_branch = true
+
+	# 初始化所有分支的小节数据
+	course.branch_measures[EditorData.BranchType.NORMAL] = course.measures.duplicate(true)
+	course.branch_measures[EditorData.BranchType.EXPERT] = course.measures.duplicate(true)
+	course.branch_measures[EditorData.BranchType.MASTER] = course.measures.duplicate(true)
+
+	project.mark_modified()
+	data_changed.emit()
+
+
+## 禁用分支模式
+func disable_branch_mode() -> void:
+	var course = get_current_course()
+	if course == null:
+		return
+
+	if not course.has_branch:
+		return
+
+	course.has_branch = false
+	course.branch_conditions.clear()
+	course.branch_measures[EditorData.BranchType.NORMAL] = []
+	course.branch_measures[EditorData.BranchType.EXPERT] = []
+	course.branch_measures[EditorData.BranchType.MASTER] = []
+
+	# 切换到普通分支
+	current_branch = EditorData.BranchType.NORMAL
+
+	project.mark_modified()
+	branch_changed.emit(current_branch)
+	data_changed.emit()
+
+
+## 检查当前课程是否有分支
+func has_branch() -> bool:
+	var course = get_current_course()
+	if course == null:
+		return false
+	return course.has_branch

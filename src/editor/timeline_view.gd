@@ -53,6 +53,14 @@ const GOGO_BG_COLOR: Color = Color(1.0, 0.8, 0.2, 0.3)
 ## 网格颜色
 const GRID_COLOR: Color = Color(0.3, 0.3, 0.3, 0.5)
 
+## 分支背景颜色
+const BRANCH_NORMAL_COLOR: Color = Color(0.25, 0.25, 0.3, 0.3)
+const BRANCH_EXPERT_COLOR: Color = Color(0.2, 0.3, 0.5, 0.3)
+const BRANCH_MASTER_COLOR: Color = Color(0.4, 0.2, 0.4, 0.3)
+
+## 分支条件标记颜色
+const BRANCH_CONDITION_COLOR: Color = Color(1.0, 0.8, 0.0, 0.8)
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
@@ -157,6 +165,11 @@ func _draw_measure(measure: EditorData.EditorMeasure, x: float, width: float) ->
 	var note_area_y = TIMELINE_HEIGHT
 	var note_area_height = size.y - TIMELINE_HEIGHT
 
+	# 分支背景色（如果有分支）
+	if controller != null and controller.has_branch():
+		var branch_color = _get_branch_color(controller.get_current_branch())
+		draw_rect(Rect2(x, note_area_y, width, note_area_height), branch_color)
+
 	# Go-Go Time背景
 	if measure.is_gogo:
 		draw_rect(Rect2(x, note_area_y, width, note_area_height), GOGO_BG_COLOR)
@@ -176,6 +189,9 @@ func _draw_measure(measure: EditorData.EditorMeasure, x: float, width: float) ->
 	var bpm_text = "BPM: %.1f" % measure.bpm
 	var font = ThemeDB.fallback_font
 	draw_string(font, Vector2(x + 5, size.y - 5), bpm_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.7, 0.7, 0.7))
+
+	# 绘制分支条件标记
+	_draw_branch_condition_marker(measure.index, x, note_area_y, width)
 
 
 ## 绘制网格线
@@ -398,3 +414,37 @@ func get_visible_range() -> Vector2:
 	var start_measure = int(scroll_offset / measure_width)
 	var end_measure = int((scroll_offset + size.x) / measure_width)
 	return Vector2(start_measure, end_measure)
+
+
+## 获取分支颜色
+func _get_branch_color(branch_type: int) -> Color:
+	match branch_type:
+		EditorData.BranchType.NORMAL: return BRANCH_NORMAL_COLOR
+		EditorData.BranchType.EXPERT: return BRANCH_EXPERT_COLOR
+		EditorData.BranchType.MASTER: return BRANCH_MASTER_COLOR
+		_: return BRANCH_NORMAL_COLOR
+
+
+## 绘制分支条件标记
+func _draw_branch_condition_marker(measure_index: int, x: float, y: float, width: float) -> void:
+	if controller == null:
+		return
+
+	var conditions = controller.get_branch_conditions()
+	for condition in conditions:
+		if condition.measure_index == measure_index:
+			# 绘制条件标记
+			var marker_height = 20.0
+			var marker_rect = Rect2(x, y, width, marker_height)
+
+			# 背景
+			draw_rect(marker_rect, BRANCH_CONDITION_COLOR)
+
+			# 条件类型文字
+			var font = ThemeDB.fallback_font
+			var text = condition.get_condition_type_name()
+			draw_string(font, Vector2(x + 5, y + 15), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color.BLACK)
+
+			# 阈值信息
+			var threshold_text = "N:%.0f E:%.0f" % [condition.normal_threshold, condition.expert_threshold]
+			draw_string(font, Vector2(x + 5, y + 35), threshold_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0.3, 0.3, 0.3))
