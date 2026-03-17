@@ -224,6 +224,7 @@ func _parse_header_line(line: String) -> bool:
 			# 直接开始谱面（无COURSE定义）
 			_state = ParseState.NOTES
 			_current_course = TJAData.TJACourse.new()
+			_measure_index = 0
 	
 	return true
 
@@ -290,7 +291,12 @@ func _parse_notes_data(line: String) -> bool:
 	# 解析音符
 	var note_chars = line.split("")
 	var note_count = 0
-	var total_notes = note_chars.size()
+	
+	# 计算有效音符数量（排除逗号）
+	var total_notes = 0
+	for char in note_chars:
+		if char != ",":
+			total_notes += 1
 
 	for i in range(note_chars.size()):
 		var char = note_chars[i]
@@ -303,7 +309,7 @@ func _parse_notes_data(line: String) -> bool:
 		var note_type = TJAData.char_to_note_type(char)
 		var note = TJAData.TJANote.new()
 		note.note_type = note_type
-		note.position = float(i) / float(max(total_notes, 1))
+		note.position = float(note_count) / float(max(total_notes, 1))
 		note.raw_char = char
 
 		# 处理连打
@@ -380,6 +386,9 @@ func _parse_command(line: String) -> bool:
 	# 处理命令
 	match cmd_name:
 		"START":
+			# 如果没有当前课程，创建一个默认课程
+			if _current_course == null:
+				_current_course = TJAData.TJACourse.new()
 			_state = ParseState.NOTES
 			_measure_index = 0
 		"END":
