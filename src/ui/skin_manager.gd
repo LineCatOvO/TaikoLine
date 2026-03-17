@@ -1,5 +1,5 @@
-class_name SkinManager
 extends Node
+# class_name SkinManager removed to avoid conflict with autoload singleton
 ## 皮肤管理器
 ## 管理游戏皮肤资源的加载、切换和查询
 
