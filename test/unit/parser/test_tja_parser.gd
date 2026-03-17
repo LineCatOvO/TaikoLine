@@ -234,7 +234,7 @@ LEVEL:5
 	# Check positions (0-based index / total notes)
 	assert_almost_eq(measure.notes[0].position, 0.0, 0.01, "First note position should be 0.0")
 	assert_almost_eq(measure.notes[1].position, 0.2, 0.01, "Second note position should be 0.2")
-	assert_almost_eq(measure.notes[2].position, 0.8, 0.01, "Third note position should be 0.8")
+	assert_almost_eq(measure.notes[4].position, 0.8, 0.01, "Last note position should be 0.8")
 
 func test_tja003_parse_multiple_measures():
 	# Test parsing multiple measures
@@ -616,11 +616,17 @@ LEVEL:9
 	assert_eq(result.song.get_course(TJAData.CourseType.HARD).level, 7, "Hard level should be 7")
 	assert_eq(result.song.get_course(TJAData.CourseType.ONI).level, 9, "Oni level should be 9")
 	
-	# Check note counts
-	assert_eq(result.song.get_course(TJAData.CourseType.EASY).measures[0].notes.size(), 1, "Easy should have 1 note")
-	assert_eq(result.song.get_course(TJAData.CourseType.NORMAL).measures[0].notes.size(), 2, "Normal should have 2 notes")
-	assert_eq(result.song.get_course(TJAData.CourseType.HARD).measures[0].notes.size(), 3, "Hard should have 3 notes")
+	# Check note counts (all notes including NONE)
+	assert_eq(result.song.get_course(TJAData.CourseType.EASY).measures[0].notes.size(), 4, "Easy should have 4 notes")
+	assert_eq(result.song.get_course(TJAData.CourseType.NORMAL).measures[0].notes.size(), 4, "Normal should have 4 notes")
+	assert_eq(result.song.get_course(TJAData.CourseType.HARD).measures[0].notes.size(), 4, "Hard should have 4 notes")
 	assert_eq(result.song.get_course(TJAData.CourseType.ONI).measures[0].notes.size(), 4, "Oni should have 4 notes")
+	
+	# Check hittable note counts
+	assert_eq(result.song.get_course(TJAData.CourseType.EASY).get_total_notes(), 1, "Easy should have 1 hittable note")
+	assert_eq(result.song.get_course(TJAData.CourseType.NORMAL).get_total_notes(), 2, "Normal should have 2 hittable notes")
+	assert_eq(result.song.get_course(TJAData.CourseType.HARD).get_total_notes(), 3, "Hard should have 3 hittable notes")
+	assert_eq(result.song.get_course(TJAData.CourseType.ONI).get_total_notes(), 4, "Oni should have 4 hittable notes")
 
 func test_tja018_parse_course_override():
 	# Test that later course definition overrides earlier one

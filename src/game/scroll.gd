@@ -80,18 +80,22 @@ func load_chart_data(course) -> void:
 	var current_time = _offset
 	var current_bpm = 120.0
 	var current_scroll = 1.0
+	var first_bpm_added = false
+	var first_scroll_added = false
 	
 	# 遍历所有小节，收集BPM和滚动速度变化
 	for measure in course.measures:
-		# 检查BPM变化
-		if measure.bpm != current_bpm:
+		# 检查BPM变化（第一个小节总是添加初始BPM）
+		if not first_bpm_added or measure.bpm != current_bpm:
 			_bpm_changes.append(BPMChange.new(current_time, measure.bpm))
 			current_bpm = measure.bpm
+			first_bpm_added = true
 		
-		# 检查滚动速度变化
-		if measure.scroll != current_scroll:
+		# 检查滚动速度变化（第一个小节总是添加初始滚动速度）
+		if not first_scroll_added or measure.scroll != current_scroll:
 			_scroll_changes.append(ScrollChange.new(current_time, measure.scroll))
 			current_scroll = measure.scroll
+			first_scroll_added = true
 		
 		# 处理命令中的变化
 		for command in measure.commands:
@@ -169,9 +173,10 @@ func position_to_time(position: float) -> float:
 	var effective_speed = base_scroll_speed * _current_scroll
 	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
 	
-	if effective_speed <= 0 or pixels_per_second <= 0:
+	if effective_speed == 0 or pixels_per_second <= 0:
 		return 0.0
 	
+	# 允许负滚动速度产生负时间差
 	return (position - judge_line_x) / (effective_speed * pixels_per_second)
 
 

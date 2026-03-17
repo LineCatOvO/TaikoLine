@@ -9,15 +9,17 @@ var test_config_path: String = "user://test_settings.cfg"
 
 
 func before_all() -> void:
-	pass
+	# 删除可能存在的配置文件，确保测试默认值时不受影响
+	_delete_settings_config()
 
 
 func before_each() -> void:
+	# 清理测试配置文件
+	_delete_test_config()
+	_delete_settings_config()
 	# 创建设置实例（模拟autoload）
 	settings = load("res://src/autoload/settings.gd").new()
 	add_child(settings)
-	# 清理测试配置文件
-	_delete_test_config()
 
 
 func after_each() -> void:
@@ -37,6 +39,13 @@ func _delete_test_config() -> void:
 	var dir = DirAccess.open("user://")
 	if dir and dir.file_exists("test_settings.cfg"):
 		dir.remove("test_settings.cfg")
+
+
+## 删除设置配置文件
+func _delete_settings_config() -> void:
+	var dir = DirAccess.open("user://")
+	if dir and dir.file_exists("settings.cfg"):
+		dir.remove("settings.cfg")
 
 
 # =============================================================================
