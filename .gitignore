@@ -34,3 +34,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.code-workspace
+
+# Android export
+android/
