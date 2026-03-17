@@ -74,6 +74,10 @@ func _setup_collision() -> void:
 
 ## 更新音符外观
 func _update_appearance() -> void:
+	# 检查sprite是否有效
+	if sprite == null:
+		return
+	
 	# 通过SkinManager获取音符类型对应的配置键名
 	var note_type_key := SkinManager.get_note_type_key(note_type)
 	

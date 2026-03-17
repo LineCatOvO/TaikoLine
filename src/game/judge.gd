@@ -151,6 +151,9 @@ func judge_note(time_diff_ms: float, note_type: int = 0) -> String:
 	# 更新统计
 	judge_counts[judge_type] += 1
 	
+	# 先发送判定结果信号
+	judge_result.emit(judge_name, note_type)
+	
 	# 处理判定结果
 	match judge_type:
 		JudgeType.PERFECT:
@@ -159,9 +162,6 @@ func judge_note(time_diff_ms: float, note_type: int = 0) -> String:
 			_on_good_judge()
 		JudgeType.MISS:
 			_on_miss_judge()
-	
-	# 发送信号
-	judge_result.emit(judge_name, note_type)
 	
 	return judge_name
 
