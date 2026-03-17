@@ -234,15 +234,15 @@ func test_ji002_gogo_score_bonus() -> void:
 func test_ji002_score_update_signal() -> void:
 	judge_system.reset()
 	
-	# 监听分数更新信号
-	var score_received = 0
-	judge_system.score_updated.connect(func(score): score_received = score)
+	# 监听分数更新信号（使用字典存储以解决闭包捕获问题）
+	var score_data = {"received": 0}
+	judge_system.score_updated.connect(func(score): score_data.received = score)
 	
 	# 执行判定
 	judge_system.judge_note(0.0, TJAData.NoteType.DON)
 	
 	# 验证信号触发
-	assert_eq(score_received, judge_system.get_score(), "分数更新信号应携带正确分数")
+	assert_eq(score_data.received, judge_system.get_score(), "分数更新信号应携带正确分数")
 
 # ==================== JI-003: 判定到连击更新测试 ====================
 
@@ -306,15 +306,15 @@ func test_ji003_max_combo_update() -> void:
 func test_ji003_combo_update_signal() -> void:
 	judge_system.reset()
 	
-	# 监听连击更新信号
-	var combo_received = 0
-	judge_system.combo_updated.connect(func(combo): combo_received = combo)
+	# 监听连击更新信号（使用字典存储以解决闭包捕获问题）
+	var combo_data = {"received": 0}
+	judge_system.combo_updated.connect(func(combo): combo_data.received = combo)
 	
 	# 执行判定
 	judge_system.judge_note(0.0, TJAData.NoteType.DON)
 	
 	# 验证信号触发
-	assert_eq(combo_received, 1, "连击更新信号应携带正确连击数")
+	assert_eq(combo_data.received, 1, "连击更新信号应携带正确连击数")
 
 # ==================== JI-004: 判定到魂槽更新测试 ====================
 
@@ -392,15 +392,15 @@ func test_ji004_clear_status() -> void:
 func test_ji004_soul_gauge_signal() -> void:
 	judge_system.reset()
 	
-	# 监听魂槽更新信号
-	var soul_received = 0.0
-	judge_system.soul_gauge_updated.connect(func(gauge): soul_received = gauge)
+	# 监听魂槽更新信号（使用字典存储以解决闭包捕获问题）
+	var soul_data = {"received": 0.0}
+	judge_system.soul_gauge_updated.connect(func(gauge): soul_data.received = gauge)
 	
 	# 执行判定
 	judge_system.judge_note(0.0, TJAData.NoteType.DON)
 	
 	# 验证信号触发
-	assert_eq(soul_received, judge_system.soul_gauge, "魂槽更新信号应携带正确值")
+	assert_eq(soul_data.received, judge_system.soul_gauge, "魂槽更新信号应携带正确值")
 
 # ==================== JI-005: 信号正确传递测试 ====================
 
@@ -408,29 +408,28 @@ func test_ji004_soul_gauge_signal() -> void:
 func test_ji005_judge_result_signal() -> void:
 	judge_system.reset()
 	
-	# 监听判定结果信号
-	var judge_type_received = ""
-	var note_type_received = 0
+	# 监听判定结果信号（使用字典存储以解决闭包捕获问题）
+	var result_data = {"judge_type": "", "note_type": 0}
 	judge_system.judge_result.connect(func(judge_type, note_type): 
-		judge_type_received = judge_type
-		note_type_received = note_type
+		result_data.judge_type = judge_type
+		result_data.note_type = note_type
 	)
 	
 	# 执行判定
 	judge_system.judge_note(0.0, TJAData.NoteType.DON)
 	
 	# 验证信号参数
-	assert_eq(judge_type_received, "良", "判定类型应为良")
-	assert_eq(note_type_received, TJAData.NoteType.DON, "音符类型应正确")
+	assert_eq(result_data.judge_type, "良", "判定类型应为良")
+	assert_eq(result_data.note_type, TJAData.NoteType.DON, "音符类型应正确")
 
 ## JI-005-2: 测试全连信号
 func test_ji005_full_combo_signal() -> void:
 	judge_system.reset()
 	judge_system.set_total_notes(5)
 	
-	# 监听全连信号
-	var full_combo_received = false
-	judge_system.full_combo_achieved.connect(func(): full_combo_received = true)
+	# 监听全连信号（使用字典存储以解决闭包捕获问题）
+	var full_combo_data = {"received": false}
+	judge_system.full_combo_achieved.connect(func(): full_combo_data.received = true)
 	
 	# 执行全部良判定
 	for i in range(5):
@@ -440,16 +439,16 @@ func test_ji005_full_combo_signal() -> void:
 	var result = judge_system.check_game_end()
 	
 	assert_true(result.full_combo, "应该达成全连")
-	assert_true(full_combo_received, "应该触发全连信号")
+	assert_true(full_combo_data.received, "应该触发全连信号")
 
 ## JI-005-3: 测试全良信号
 func test_ji005_dondoko_full_combo_signal() -> void:
 	judge_system.reset()
 	judge_system.set_total_notes(5)
 	
-	# 监听全良信号
-	var dondoko_received = false
-	judge_system.dondoko_full_combo_achieved.connect(func(): dondoko_received = true)
+	# 监听全良信号（使用字典存储以解决闭包捕获问题）
+	var dondoko_data = {"received": false}
+	judge_system.dondoko_full_combo_achieved.connect(func(): dondoko_data.received = true)
 	
 	# 执行全部良判定
 	for i in range(5):
@@ -459,7 +458,7 @@ func test_ji005_dondoko_full_combo_signal() -> void:
 	var result = judge_system.check_game_end()
 	
 	assert_true(result.dondoko_full_combo, "应该达成全良")
-	assert_true(dondoko_received, "应该触发全良信号")
+	assert_true(dondoko_data.received, "应该触发全良信号")
 
 ## JI-005-4: 测试信号顺序
 func test_ji005_signal_order() -> void:
@@ -486,15 +485,15 @@ func test_ji005_note_judge_signal() -> void:
 	add_child_autofree(note)
 	note.note_state = GameNote.NoteState.JUDGING
 	
-	# 监听音符判定信号
-	var judge_result_received = ""
-	note.note_judged.connect(func(_note, result): judge_result_received = result)
+	# 监听音符判定信号（使用字典存储以解决闭包捕获问题）
+	var judge_data = {"result": ""}
+	note.note_judged.connect(func(_note, result): judge_data.result = result)
 	
 	# 执行判定
 	note.try_judge("don", 0.0)
 	
 	# 验证信号
-	assert_eq(judge_result_received, "良", "音符判定信号应携带正确结果")
+	assert_eq(judge_data.result, "良", "音符判定信号应携带正确结果")
 
 # ==================== 系统协作测试 ====================
 

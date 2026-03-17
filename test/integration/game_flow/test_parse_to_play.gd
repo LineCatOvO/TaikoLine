@@ -305,19 +305,25 @@ func test_ptp002_bpm_change_signal() -> void:
 	var course = _create_bpm_change_course()
 	scroll_system.load_chart_data(course)
 	
-	# 监听BPM变化信号
-	var bpm_changed_received = false
-	var new_bpm = 0.0
+	# 监听BPM变化信号（使用字典存储以解决闭包捕获问题）
+	var bpm_data = {"received": false, "value": 0.0}
 	scroll_system.bpm_changed.connect(func(bpm): 
-		bpm_changed_received = true
-		new_bpm = bpm
+		bpm_data.received = true
+		bpm_data.value = bpm
 	)
 	
-	# 更新时间触发BPM变化
+	# 更新时间触发BPM变化（第一个BPM变化点在时间0）
 	scroll_system.update_time(0.0)
 	
-	assert_true(bpm_changed_received, "应该触发BPM变化信号")
-	assert_eq(new_bpm, 120.0, "新BPM应为120")
+	# 验证初始BPM信号
+	assert_true(bpm_data.received, "应该触发BPM变化信号")
+	assert_eq(bpm_data.value, 120.0, "新BPM应为120")
+	
+	# 重置并测试第二个BPM变化
+	bpm_data.received = false
+	scroll_system.update_time(2.1)  # 第二个小节开始
+	assert_true(bpm_data.received, "应该触发第二个BPM变化信号")
+	assert_eq(bpm_data.value, 150.0, "第二个BPM应为150")
 
 ## PTP-002-5: 测试小节时长计算
 func test_ptp002_measure_duration_calculation() -> void:

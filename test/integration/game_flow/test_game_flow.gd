@@ -146,23 +146,22 @@ func test_gf001_complete_flow_signals() -> void:
 	game_controller.current_course = _create_test_course()
 	game_controller._initialize_game_systems()
 	
-	# 监听信号
-	var game_started_called = false
-	var game_ended_called = false
+	# 监听信号（使用字典存储以解决闭包捕获问题）
+	var signal_data = {"started": false, "ended": false}
 	
-	game_controller.game_started.connect(func(): game_started_called = true)
-	game_controller.game_ended.connect(func(_result): game_ended_called = true)
+	game_controller.game_started.connect(func(): signal_data.started = true)
+	game_controller.game_ended.connect(func(_result): signal_data.ended = true)
 	
 	# 执行流程
 	game_controller.current_state = GameController.PlayState.READY
 	game_controller.start_game()
 	
-	assert_true(game_started_called, "应该触发game_started信号")
+	assert_true(signal_data.started, "应该触发game_started信号")
 	
 	# 结束游戏
 	game_controller.end_game()
 	
-	assert_true(game_ended_called, "应该触发game_ended信号")
+	assert_true(signal_data.ended, "应该触发game_ended信号")
 
 # ==================== GF-002: 暂停恢复流程测试 ====================
 
@@ -200,20 +199,19 @@ func test_gf002_pause_resume_signals() -> void:
 	game_controller._initialize_game_systems()
 	game_controller.current_state = GameController.PlayState.PLAYING
 	
-	# 监听信号
-	var paused_called = false
-	var resumed_called = false
+	# 监听信号（使用字典存储以解决闭包捕获问题）
+	var signal_data = {"paused": false, "resumed": false}
 	
-	game_controller.game_paused.connect(func(): paused_called = true)
-	game_controller.game_resumed.connect(func(): resumed_called = true)
+	game_controller.game_paused.connect(func(): signal_data.paused = true)
+	game_controller.game_resumed.connect(func(): signal_data.resumed = true)
 	
 	# 暂停
 	game_controller.pause_game()
-	assert_true(paused_called, "应该触发game_paused信号")
+	assert_true(signal_data.paused, "应该触发game_paused信号")
 	
 	# 恢复
 	game_controller.resume_game()
-	assert_true(resumed_called, "应该触发game_resumed信号")
+	assert_true(signal_data.resumed, "应该触发game_resumed信号")
 
 ## GF-002-4: 测试无效状态下的暂停恢复
 func test_gf002_invalid_pause_resume() -> void:
