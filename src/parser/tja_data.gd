@@ -190,7 +190,7 @@ class TJACourse:
 	## 难度星级（1-10）
 	var level: int = 5
 	## 气球音符打击次数列表
-	var balloons: Array[int] = []
+	var balloons: Array = []
 	## 计分初始值
 	var score_init: int = 1000
 	## 计分差值
