@@ -21,6 +21,8 @@ build/
 *.aab
 *.ipa
 *.pck
+!web/index.pck
+!export/web/index.pck
 *.zip
 
 # OS/Editor specific
