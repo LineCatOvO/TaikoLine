@@ -59,13 +59,15 @@ var _error_line: int = 0
 ## @return: TJAParseResult 解析结果
 func parse_file(file_path: String) -> TJAData.TJAParseResult:
 	var result = TJAData.TJAParseResult.new()
-	
-	# 检查文件是否存在
-	if not FileAccess.file_exists(file_path):
+
+	# 直接尝试打开文件（避免 res:// 路径下非导入文件的问题）
+	var file = FileAccess.open(file_path, FileAccess.READ)
+	if file == null:
 		result.success = false
-		result.error = "文件不存在: " + file_path
+		result.error = "无法打开文件: " + file_path
 		return result
-	
+	file.close()
+
 	# 读取文件内容
 	var content = _read_file_with_encoding(file_path)
 	if content == "":

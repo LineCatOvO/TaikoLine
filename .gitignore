@@ -37,3 +37,6 @@ Thumbs.db
 
 # Android export
 android/
+
+# Windows export
+export/windows/

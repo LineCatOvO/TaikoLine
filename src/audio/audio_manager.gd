@@ -33,9 +33,10 @@ var _audio_offset_ms: float = 0.0
 var _preloaded_sounds: Dictionary = {}
 
 ## 音效类型定义
+## 支持WAV和OGG格式，Godot会自动处理导入
 const SOUND_EFFECTS := {
-	"don": "res://resources/sounds/don.ogg",
-	"ka": "res://resources/sounds/ka.ogg",
+	"don": "res://resources/sounds/don.wav",
+	"ka": "res://resources/sounds/ka.wav",
 	"balloon": "res://resources/sounds/balloon.ogg",
 	"judge_perfect": "res://resources/sounds/judge_perfect.ogg",
 	"judge_good": "res://resources/sounds/judge_good.ogg",

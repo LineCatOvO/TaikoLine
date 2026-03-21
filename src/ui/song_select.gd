@@ -243,8 +243,9 @@ func _setup_footer(parent: Control) -> void:
 ## 扫描歌曲目录
 func _scan_songs() -> void:
 	_songs.clear()
-	
+
 	var songs_dir = "res://songs"
+	print("[SongSelect] 开始扫描歌曲目录: " + songs_dir)
 	var dir = DirAccess.open(songs_dir)
 	
 	if dir == null:
@@ -257,6 +258,7 @@ func _scan_songs() -> void:
 	
 	while folder_name != "":
 		if dir.current_is_dir() and not folder_name.begins_with("."):
+			print("[SongSelect] 发现子目录: " + folder_name)
 			var folder_path = songs_dir + "/" + folder_name
 			_scan_song_folder(folder_path)
 		folder_name = dir.get_next()
@@ -271,6 +273,7 @@ func _scan_songs() -> void:
 
 ## 扫描单个歌曲文件夹
 func _scan_song_folder(folder_path: String) -> void:
+	print("[SongSelect] 扫描文件夹: " + folder_path)
 	var dir = DirAccess.open(folder_path)
 	
 	if dir == null:
@@ -281,6 +284,7 @@ func _scan_song_folder(folder_path: String) -> void:
 	
 	while file_name != "":
 		if file_name.ends_with(".tja"):
+			print("[SongSelect] 发现 TJA 文件: " + file_name)
 			var tja_path = folder_path + "/" + file_name
 			_load_song_info(tja_path)
 		file_name = dir.get_next()
@@ -290,14 +294,17 @@ func _scan_song_folder(folder_path: String) -> void:
 
 ## 加载歌曲信息
 func _load_song_info(tja_path: String) -> void:
+	print("[SongSelect] 加载歌曲信息: " + tja_path)
 	var parser = TJAParser.new()
 	var result = parser.parse_file(tja_path)
-	
+
 	if not result.success:
 		push_warning("解析TJA文件失败: " + tja_path + " - " + result.error)
+		print("[SongSelect] 解析失败: " + result.error)
 		return
-	
+
 	var song = result.song
+	print("[SongSelect] 解析成功: " + song.title)
 	
 	# 构建歌曲数据
 	var song_data = {
