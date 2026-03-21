@@ -60,6 +60,12 @@ var _error_line: int = 0
 func parse_file(file_path: String) -> TJAData.TJAParseResult:
 	var result = TJAData.TJAParseResult.new()
 
+	# 检查文件是否存在
+	if not FileAccess.file_exists(file_path):
+		result.success = false
+		result.error = "文件不存在: " + file_path
+		return result
+
 	# 直接尝试打开文件（避免 res:// 路径下非导入文件的问题）
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	if file == null:

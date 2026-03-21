@@ -129,40 +129,40 @@ func update_time(time: float) -> void:
 
 ## 更新当前BPM
 func _update_current_bpm() -> void:
-	# 检查是否需要初始化BPM（第一次更新时）
-	if _bpm_changes.size() > 0 and _current_time >= _bpm_changes[0].time:
-		var new_bpm = _bpm_changes[0].bpm
-		if _current_bpm != new_bpm:
-			_current_bpm = new_bpm
-			bpm_changed.emit(_current_bpm)
+	if _bpm_changes.size() == 0:
 		return
-	
-	# 查找当前时间对应的BPM变化点
-	for i in range(_bpm_changes.size() - 1, -1, -1):
+
+	# 查找当前时间对应的BPM（找到最后一个时间<=当前时间的变化点）
+	var new_bpm = _current_bpm
+	for i in range(_bpm_changes.size()):
 		if _bpm_changes[i].time <= _current_time:
-			if _current_bpm != _bpm_changes[i].bpm:
-				_current_bpm = _bpm_changes[i].bpm
-				bpm_changed.emit(_current_bpm)
-			break
+			new_bpm = _bpm_changes[i].bpm
+		else:
+			break  # 后续变化点都在未来，停止搜索
+
+	# 如果BPM发生变化，更新并发射信号
+	if _current_bpm != new_bpm:
+		_current_bpm = new_bpm
+		bpm_changed.emit(_current_bpm)
 
 
 ## 更新当前滚动速度
 func _update_current_scroll() -> void:
-	# 检查是否需要初始化滚动速度（第一次更新时）
-	if _scroll_changes.size() > 0 and _current_time >= _scroll_changes[0].time:
-		var new_scroll = _scroll_changes[0].scroll
-		if _current_scroll != new_scroll:
-			_current_scroll = new_scroll
-			scroll_speed_changed.emit(_current_scroll)
+	if _scroll_changes.size() == 0:
 		return
-	
-	# 查找当前时间对应的滚动速度变化点
-	for i in range(_scroll_changes.size() - 1, -1, -1):
+
+	# 查找当前时间对应的滚动速度（找到最后一个时间<=当前时间的变化点）
+	var new_scroll = _current_scroll
+	for i in range(_scroll_changes.size()):
 		if _scroll_changes[i].time <= _current_time:
-			if _current_scroll != _scroll_changes[i].scroll:
-				_current_scroll = _scroll_changes[i].scroll
-				scroll_speed_changed.emit(_current_scroll)
-			break
+			new_scroll = _scroll_changes[i].scroll
+		else:
+			break  # 后续变化点都在未来，停止搜索
+
+	# 如果滚动速度发生变化，更新并发射信号
+	if _current_scroll != new_scroll:
+		_current_scroll = new_scroll
+		scroll_speed_changed.emit(_current_scroll)
 
 
 ## 时间转换为位置

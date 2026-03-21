@@ -183,24 +183,32 @@ func _initialize_game_systems() -> void:
 	current_branch = TJAData.BranchType.NORMAL
 	_branch_condition_index = 0
 	_pending_branch_conditions = []
-	
+
 	# 重置Go-Go Time系统
 	is_gogo_time = false
 	_gogo_sections = []
 
+	# 设置音频偏移
+	if current_song != null:
+		audio_offset = current_song.offset
+
 	# 设置滚动系统
 	scroll_system.reset()
-	scroll_system.set_offset(current_song.offset)
-	scroll_system.load_chart_data(current_course)
+	if current_song != null:
+		scroll_system.set_offset(current_song.offset)
+	if current_course != null:
+		scroll_system.load_chart_data(current_course)
 
 	# 设置判定系统
 	judge_system.reset()
-	judge_system.set_total_notes(current_course.get_total_notes())
-	judge_system.set_score_params(current_course.score_init, current_course.score_diff)
+	if current_course != null:
+		judge_system.set_total_notes(current_course.get_total_notes())
+		judge_system.set_score_params(current_course.score_init, current_course.score_diff)
 
 	# 加载音符数据
 	note_manager.clear_all_notes()
-	note_manager.load_chart(current_course, current_song.offset)
+	if current_course != null and current_song != null:
+		note_manager.load_chart(current_course, current_song.offset)
 	
 	# 初始化分支条件
 	_initialize_branch_conditions()
@@ -211,7 +219,7 @@ func _initialize_game_systems() -> void:
 
 ## 初始化分支条件
 func _initialize_branch_conditions() -> void:
-	if not current_course.has_branch:
+	if current_course == null or not current_course.has_branch:
 		return
 	
 	_pending_branch_conditions = current_course.branch_conditions.duplicate()
@@ -230,9 +238,13 @@ func _initialize_branch_conditions() -> void:
 ## 初始化Go-Go Time区间
 func _initialize_gogo_sections() -> void:
 	_gogo_sections = []
+
+	if current_song == null or current_course == null:
+		return
+
 	var current_time = current_song.offset
 	var gogo_start: float = -1.0
-	
+
 	for measure in current_course.measures:
 		if measure.is_gogo and gogo_start < 0:
 			# Go-Go Time开始
@@ -242,7 +254,7 @@ func _initialize_gogo_sections() -> void:
 			_gogo_sections.append({"start": gogo_start, "end": current_time})
 			gogo_start = -1.0
 		current_time += measure.get_duration()
-	
+
 	# 处理最后一个Go-Go Time区间
 	if gogo_start >= 0:
 		_gogo_sections.append({"start": gogo_start, "end": current_time})
