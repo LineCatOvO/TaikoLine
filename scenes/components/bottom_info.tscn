@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://bottom_info"]
+
+[node name="BottomInfo" type="Control"]
+layout_mode = 1
+anchors_preset = 10
+anchor_top = 1.0
+anchor_bottom = 1.0
+grow_vertical = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_top = 1.0
+anchor_bottom = 1.0
+grow_vertical = 2
+offset_top = -40.0
+offset_bottom = -10.0
+theme_override_constants/separation = 30
+
+[node name="VersionLabel" type="Label" parent="HBoxContainer"]
+layout_mode = 2
+text = "版本：v1.0.0"
+
+[node name="Spacer" type="Control" parent="HBoxContainer"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+
+[node name="CopyrightLabel" type="Label" parent="HBoxContainer"]
+layout_mode = 2
+text = "© 2026 TaikoLine"
+
+[node name="Spacer2" type="Control" parent="HBoxContainer"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+
+[node name="HintLabel" type="Label" parent="HBoxContainer"]
+layout_mode = 2
+text = "按 Enter 确认"

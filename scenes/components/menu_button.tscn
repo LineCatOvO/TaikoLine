@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://menu_button"]
+
+[node name="MenuButton" type="Button"]
+layout_mode = 1
+size_flags_horizontal = 4
+custom_minimum_size = Vector2(200, 50)
+text = "按钮"
+
+[connection signal="mouse_entered" from="." to="." method="_on_mouse_entered"]
+[connection signal="mouse_exited" from="." to="." method="_on_mouse_exited"]
+[connection signal="pressed" from="." to="." method="_on_pressed"]
