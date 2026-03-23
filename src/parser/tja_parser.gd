@@ -60,7 +60,7 @@ var _error_line: int = 0
 func parse_file(file_path: String) -> TJAData.TJAParseResult:
 	var result = TJAData.TJAParseResult.new()
 
-	# 直接尝试打开文件（避免 res:// 路径下非导入文件的问题）
+# 直接尝试打开文件（避免 res:// 路径下非导入文件的问题）
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
 		result.success = false
