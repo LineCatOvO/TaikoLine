@@ -42,3 +42,6 @@ android/
 
 # Windows export
 export/windows/
+
+# Web dependencies
+web/node_modules/

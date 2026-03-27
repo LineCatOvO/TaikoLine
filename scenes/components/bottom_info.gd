@@ -17,14 +17,27 @@ extends Control
 ## 初始化时更新版本信息
 func _ready() -> void:
 	_update_version()
+	_setup_copyright()
 
 ## 更新版本号显示
 ## 从项目设置中读取版本号，如果没有则使用默认值 v1.0.0
 func _update_version() -> void:
 	var version = ProjectSettings.get_setting("application/config/version", "v1.0.0")
-	version_label.text = "版本：" + version
+	if version_label:
+		version_label.text = "版本：%s" % version
+
+## 设置版权信息
+func _setup_copyright() -> void:
+	if copyright_label:
+		copyright_label.text = "© 2026 TaikoLine"
 
 ## 设置操作提示文字
 ## 参数 text: 要显示的提示文字
 func set_hint(text: String) -> void:
-	hint_label.text = text
+	if hint_label:
+		hint_label.text = text
+
+## 获取当前版本号
+## 返回: 版本号字符串
+func get_version() -> String:
+	return ProjectSettings.get_setting("application/config/version", "v1.0.0")

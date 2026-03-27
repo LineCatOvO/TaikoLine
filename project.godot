@@ -12,6 +12,7 @@ config_version=5
 
 config/name="TaikoLine"
 config/description="A Taiko no Tatsujin simulator built with Godot 4.4"
+config/version="v1.0.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
