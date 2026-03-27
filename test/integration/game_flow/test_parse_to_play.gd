@@ -6,6 +6,7 @@
 ## - PTP-001: TJA解析到音符生成
 ## - PTP-002: BPM变化正确应用
 ## - PTP-003: 滚动速度变化正确应用
+## - PTP-004: 分支谱面解析测试
 ## - PTP-005: 音符时间计算正确
 
 extends GutTest
@@ -412,6 +413,97 @@ func test_ptp003_effective_scroll_speed() -> void:
 	
 	var effective = scroll_system.get_effective_scroll_speed()
 	assert_eq(effective, 3.0, "有效滚动速度应为基础速度乘以当前速度")
+
+# ==================== PTP-004: 分支谱面解析测试 ====================
+
+## PTP-004-1: 测试分支谱面解析
+func test_ptp004_branch_parsing() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 验证分支标志
+	assert_true(course.has_branch, "应检测到分支")
+
+## PTP-004-2: 测试分支类型识别
+func test_ptp004_branch_type_identification() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 验证分支类型
+	if course.has_branch:
+		# 分支类型应为 P（精度）或 R（连打）
+		assert_true(course.branch_type in ["P", "R"], "分支类型应为P或R")
+
+## PTP-004-3: 测试分支阈值解析
+func test_ptp004_branch_threshold_parsing() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 验证分支阈值
+	if course.has_branch:
+		# 应有分支阈值设置
+		assert_gt(course.branch_threshold_good, 0, "应有普通分支阈值")
+		assert_gt(course.branch_threshold_bad, 0, "应有玄人分支阈值")
+
+## PTP-004-4: 测试分支音符加载
+func test_ptp004_branch_note_loading() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 加载谱面到 NoteManager
+	note_manager.load_chart(course, song.offset)
+
+	# 验证音符队列
+	var pending_count = note_manager.get_pending_note_count()
+	assert_gt(pending_count, 0, "应有待生成的音符")
+
+## PTP-004-5: 测试分支切换时机计算
+func test_ptp004_branch_switch_timing() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 验证分支切换点
+	if course.has_branch:
+		# 分支切换点应在谱面中标记
+		var branch_start_time = course.get_branch_start_time()
+		assert_gte(branch_start_time, 0.0, "分支切换时间应大于等于0")
+
+## PTP-004-6: 测试不同分支的音符差异
+func test_ptp004_branch_note_differences() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 如果有分支，不同分支的音符应该不同
+	if course.has_branch and course.normal_branch and course.master_branch:
+		var normal_notes = course.normal_branch.get_total_notes()
+		var master_notes = course.master_branch.get_total_notes()
+
+		# 达人分支通常比普通分支音符更多
+		assert_gte(master_notes, normal_notes, "达人分支音符数应大于等于普通分支")
 
 # ==================== PTP-005: 音符时间计算正确测试 ====================
 

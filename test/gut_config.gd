@@ -8,7 +8,8 @@ extends Resource
 var directories = {
 	"test": {
 		"unit": "res://test/unit/",
-		"integration": "res://test/integration/"
+		"integration": "res://test/integration/",
+		"e2e": "res://test/e2e/"
 	},
 	"fixtures": "res://test/fixtures/",
 	"mock": "res://test/mock/"
@@ -25,7 +26,8 @@ var config = {
 	# Directory to search for tests
 	"directories": [
 		"res://test/unit/",
-		"res://test/integration/"
+		"res://test/integration/",
+		"res://test/e2e/"
 	],
 	
 	# File pattern for test files

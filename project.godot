@@ -17,13 +17,6 @@ run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 
-[autoload]
-
-GameState="*res://src/autoload/game_state.gd"
-Settings="*res://src/autoload/settings.gd"
-AudioManager="*res://src/audio/audio_manager.gd"
-SkinManager="*res://src/ui/skin_manager.gd"
-
 [audio]
 
 bus/1/name="Music"
@@ -38,6 +31,13 @@ bus/2/mute=false
 bus/2/bypass_fx=false
 bus/2/volume_db=0.0
 bus/2/send="Master"
+
+[autoload]
+
+GameState="*res://src/autoload/game_state.gd"
+Settings="*res://src/autoload/settings.gd"
+AudioManager="*res://src/audio/audio_manager.gd"
+SkinManager="*res://src/ui/skin_manager.gd"
 
 [display]
 

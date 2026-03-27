@@ -8,6 +8,9 @@
 ## - JI-003: 判定到连击更新
 ## - JI-004: 判定到魂槽更新
 ## - JI-005: 信号正确传递
+## - JI-006: 连打/气球音符测试
+## - JI-007: Go-Go Time 测试
+## - JI-008: 精度计算测试
 
 extends GutTest
 
@@ -494,6 +497,230 @@ func test_ji005_note_judge_signal() -> void:
 	
 	# 验证信号
 	assert_eq(judge_data.result, "良", "音符判定信号应携带正确结果")
+
+# ==================== JI-006: 连打/气球音符测试 ====================
+
+## JI-006-1: 测试连打音符判定
+func test_ji006_renda_note_judge() -> void:
+	judge_system.reset()
+
+	# 连打音符需要多次输入
+	# 模拟连打判定
+	for i in range(5):
+		judge_system.record_renda()
+
+	# 验证连打计数
+	assert_eq(judge_system.get_max_renda_count(), 5, "最大连打数应为5")
+
+## JI-006-2: 测试连打计数重置
+func test_ji006_renda_count_reset() -> void:
+	judge_system.reset()
+
+	# 记录连打
+	for i in range(10):
+		judge_system.record_renda()
+
+	assert_eq(judge_system.get_max_renda_count(), 10, "最大连打数应为10")
+
+	# 重置连打计数
+	judge_system.reset_renda_count()
+	assert_eq(judge_system.current_renda_count, 0, "当前连打数应重置为0")
+	assert_eq(judge_system.get_max_renda_count(), 10, "最大连打数应保持")
+
+## JI-006-3: 测试气球音符判定
+func test_ji006_balloon_note_judge() -> void:
+	judge_system.reset()
+
+	# 气球音符需要连续打击
+	# 模拟气球打击
+	var balloon_hits = 5
+	for i in range(balloon_hits):
+		judge_system.record_renda()
+
+	# 验证连打计数
+	assert_eq(judge_system.get_max_renda_count(), balloon_hits, "气球打击数应正确")
+
+## JI-006-4: 测试连打分数计算
+func test_ji006_renda_score_calculation() -> void:
+	judge_system.reset()
+	judge_system.set_score_params(1000, 100)
+
+	# 连打音符的分数计算
+	# 每次连打增加基础分数
+	var initial_score = judge_system.get_score()
+
+	# 模拟连打判定
+	for i in range(10):
+		judge_system.judge_note(0.0, TJAData.NoteType.DON)
+
+	var final_score = judge_system.get_score()
+	assert_gt(final_score, initial_score, "连打应增加分数")
+
+## JI-006-5: 测试连打中断处理
+func test_ji006_renda_interruption() -> void:
+	judge_system.reset()
+
+	# 开始连打
+	for i in range(5):
+		judge_system.record_renda()
+
+	assert_eq(judge_system.current_renda_count, 5, "当前连打数应为5")
+
+	# 中断连打（不可判定）
+	judge_system.judge_note(200.0, TJAData.NoteType.DON)
+
+	# 验证连打中断
+	assert_eq(judge_system.get_combo(), 0, "连击应重置")
+
+# ==================== JI-007: Go-Go Time 测试 ====================
+
+## JI-007-1: 测试Go-Go Time启用
+func test_ji007_gogo_time_enable() -> void:
+	judge_system.reset()
+
+	# 启用Go-Go Time
+	judge_system.set_gogo_time(true)
+
+	assert_true(judge_system.is_gogo_time, "Go-Go Time应启用")
+
+## JI-007-2: 测试Go-Go Time分数加成
+func test_ji007_gogo_score_bonus() -> void:
+	judge_system.reset()
+	judge_system.set_score_params(1000, 100)
+
+	# 正常判定
+	judge_system.judge_note(0.0, TJAData.NoteType.DON)
+	var normal_score = judge_system.get_score()
+
+	# 重置并启用Go-Go Time
+	judge_system.reset()
+	judge_system.set_gogo_time(true)
+	judge_system.judge_note(0.0, TJAData.NoteType.DON)
+	var gogo_score = judge_system.get_score()
+
+	# Go-Go Time分数应为1.2倍
+	assert_gt(gogo_score, normal_score, "Go-Go Time分数应高于正常分数")
+	assert_almost_eq(float(gogo_score) / float(normal_score), 1.2, 0.01, "分数倍率应为1.2")
+
+## JI-007-3: 测试Go-Go Time魂槽加成
+func test_ji007_gogo_soul_bonus() -> void:
+	judge_system.reset()
+
+	# 正常判定
+	judge_system.judge_note(0.0, TJAData.NoteType.DON)
+	var normal_soul = judge_system.soul_gauge
+
+	# 重置并启用Go-Go Time
+	judge_system.reset()
+	judge_system.set_gogo_time(true)
+	judge_system.judge_note(0.0, TJAData.NoteType.DON)
+	var gogo_soul = judge_system.soul_gauge
+
+	# Go-Go Time魂槽增加应为1.2倍
+	assert_gt(gogo_soul, normal_soul, "Go-Go Time魂槽应高于正常")
+
+## JI-007-4: 测试Go-Go Time关闭
+func test_ji007_gogo_time_disable() -> void:
+	judge_system.reset()
+
+	# 启用后关闭
+	judge_system.set_gogo_time(true)
+	assert_true(judge_system.is_gogo_time, "Go-Go Time应启用")
+
+	judge_system.set_gogo_time(false)
+	assert_false(judge_system.is_gogo_time, "Go-Go Time应关闭")
+
+## JI-007-5: 测试Go-Go Time期间连击加成
+func test_ji007_gogo_combo_bonus() -> void:
+	judge_system.reset()
+	judge_system.set_score_params(1000, 100)
+	judge_system.set_gogo_time(true)
+
+	# 建立连击
+	for i in range(15):
+		judge_system.judge_note(0.0, TJAData.NoteType.DON)
+
+	# 验证分数包含连击加成和Go-Go Time加成
+	var score = judge_system.get_score()
+	# 基础分数 * 连击加成 * Go-Go Time加成
+	assert_gt(score, 1000 * 15, "分数应包含连击加成和Go-Go Time加成")
+
+# ==================== JI-008: 精度计算测试 ====================
+
+## JI-008-1: 测试精度计算
+func test_ji008_accuracy_calculation() -> void:
+	judge_system.reset()
+	judge_system.set_total_notes(10)
+
+	# 全良
+	for i in range(10):
+		judge_system.judge_note(0.0, TJAData.NoteType.DON)
+
+	var accuracy = judge_system.get_accuracy()
+	assert_almost_eq(accuracy, 1.0, 0.001, "全良精度应为1.0")
+
+## JI-008-2: 测试混合精度计算
+func test_ji008_mixed_accuracy() -> void:
+	judge_system.reset()
+	judge_system.set_total_notes(10)
+
+	# 8良2可
+	for i in range(8):
+		judge_system.judge_note(0.0, TJAData.NoteType.DON)
+	for i in range(2):
+		judge_system.judge_note(50.0, TJAData.NoteType.DON)
+
+	var accuracy = judge_system.get_accuracy()
+	# (8 * 1.0 + 2 * 0.5) / 10 = 0.9
+	assert_almost_eq(accuracy, 0.9, 0.001, "混合精度应正确")
+
+## JI-008-3: 测试评级计算
+func test_ji008_rank_calculation() -> void:
+	judge_system.reset()
+	judge_system.set_total_notes(10)
+
+	# 全良 - SS
+	for i in range(10):
+		judge_system.judge_note(0.0, TJAData.NoteType.DON)
+	assert_eq(judge_system.get_rank(), "SS", "全良应获得SS评级")
+
+	# 重置 - S (95%+)
+	judge_system.reset()
+	judge_system.set_total_notes(20)
+	for i in range(19):
+		judge_system.judge_note(0.0, TJAData.NoteType.DON)
+	judge_system.judge_note(50.0, TJAData.NoteType.DON)  # 1个可
+	# 精度 = (19 * 1.0 + 1 * 0.5) / 20 = 0.975
+	assert_eq(judge_system.get_rank(), "S", "95%+精度应获得S评级")
+
+## JI-008-4: 测试评级边界
+func test_ji008_rank_boundaries() -> void:
+	judge_system.reset()
+	judge_system.set_total_notes(100)
+
+	# 90%精度 - A
+	for i in range(90):
+		judge_system.judge_note(0.0, TJAData.NoteType.DON)
+	for i in range(10):
+		judge_system.judge_note(50.0, TJAData.NoteType.DON)
+	# 精度 = (90 * 1.0 + 10 * 0.5) / 100 = 0.95
+	assert_eq(judge_system.get_rank(), "S", "95%精度应获得S评级")
+
+## JI-008-5: 测试理论最高分计算
+func test_ji008_max_score_calculation() -> void:
+	judge_system.reset()
+	judge_system.set_total_notes(100)
+	judge_system.set_score_params(1000, 100)
+
+	var max_score = judge_system.calculate_max_score()
+	assert_gt(max_score, 0, "理论最高分应大于0")
+
+	# 验证理论最高分大于实际得分
+	for i in range(100):
+		judge_system.judge_note(0.0, TJAData.NoteType.DON)
+
+	var actual_score = judge_system.get_score()
+	assert_gte(max_score, actual_score, "理论最高分应大于等于实际得分")
 
 # ==================== 系统协作测试 ====================
 

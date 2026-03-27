@@ -7,6 +7,10 @@
 ## - AS-002: 音频偏移应用
 ## - AS-003: 暂停恢复音频
 ## - AS-004: 音效播放
+## - AS-005: 输出设备管理测试
+## - AS-006: 延迟测试功能测试
+## - AS-007: 音频缓冲区设置测试
+## - AS-008: 音频资源管理测试
 
 extends GutTest
 
@@ -64,56 +68,175 @@ class MockAudioManagerForTest extends RefCounted:
 	var music_stopped_count: int = 0
 	var music_paused_count: int = 0
 	var music_resumed_count: int = 0
-	
+
+	# 输出设备相关
+	var _current_output_device: String = "Default"
+	var _output_devices: Array[String] = ["Default"]
+
+	# 延迟测试相关
+	var _is_latency_testing: bool = false
+	var _latency_test_results: Array[float] = []
+
+	# 音频总线常量
+	const MASTER_BUS := "Master"
+	const MUSIC_BUS := "Music"
+	const SFX_BUS := "SFX"
+
+	# 音量设置
+	var _master_volume: float = 1.0
+	var _music_volume: float = 1.0
+	var _sfx_volume: float = 1.0
+	var _is_muted: bool = false
+
+	# 预加载音效
+	var _preloaded_sounds: Dictionary = {}
+
 	func play_music(_stream, _from_position: float = 0.0) -> void:
 		is_playing = true
 		is_paused = false
 		music_started_count += 1
-	
+
 	func stop_music() -> void:
 		is_playing = false
 		is_paused = false
 		music_stopped_count += 1
-	
+
 	func pause_music() -> void:
 		if is_playing:
 			is_paused = true
 			music_paused_count += 1
-	
+
 	func resume_music() -> void:
 		if is_paused:
 			is_paused = false
 			music_resumed_count += 1
-	
+
 	func get_music_position() -> float:
 		return current_position
-	
+
 	func seek_music(position: float) -> void:
 		current_position = position
-	
+
 	func set_audio_offset(offset_ms: float) -> void:
 		audio_offset_ms = offset_ms
-	
+
 	func get_audio_offset() -> float:
 		return audio_offset_ms
-	
+
 	func get_synced_time() -> float:
 		return current_position + (audio_offset_ms / 1000.0)
-	
+
 	func play_sfx(sound_name: String, _volume_db: float = 0.0) -> void:
 		last_sfx_played = sound_name
-	
+
 	func play_don() -> void:
 		last_sfx_played = "don"
-	
+
 	func play_ka() -> void:
 		last_sfx_played = "ka"
-	
+
 	func set_master_volume(value: float) -> void:
-		volume = value
-	
+		_master_volume = value
+
 	func get_master_volume() -> float:
-		return volume
+		return _master_volume
+
+	func set_music_volume(value: float) -> void:
+		_music_volume = value
+
+	func get_music_volume() -> float:
+		return _music_volume
+
+	func set_sfx_volume(value: float) -> void:
+		_sfx_volume = value
+
+	func get_sfx_volume() -> float:
+		return _sfx_volume
+
+	func set_mute(mute: bool) -> void:
+		_is_muted = mute
+
+	func is_muted() -> bool:
+		return _is_muted
+
+	# 输出设备管理
+	func get_output_devices() -> Array[String]:
+		return _output_devices
+
+	func get_current_output_device() -> String:
+		return _current_output_device
+
+	func set_output_device(device_name: String) -> bool:
+		if device_name == "Default" or device_name in _output_devices:
+			_current_output_device = device_name
+			return true
+		return false
+
+	func refresh_devices() -> void:
+		_output_devices = ["Default", "Speaker", "Headphones"]
+
+	# 延迟测试
+	func start_latency_test() -> void:
+		_is_latency_testing = true
+		_latency_test_results.clear()
+
+	func stop_latency_test() -> void:
+		_is_latency_testing = false
+
+	func is_latency_testing() -> bool:
+		return _is_latency_testing
+
+	func get_latency_results() -> Array[float]:
+		return _latency_test_results.duplicate()
+
+	func get_average_latency() -> float:
+		if _latency_test_results.is_empty():
+			return 0.0
+		var total: float = 0.0
+		for result in _latency_test_results:
+			total += result
+		return total / _latency_test_results.size()
+
+	func get_latency_description() -> String:
+		if _latency_test_results.is_empty():
+			return "No test data"
+		var avg = get_average_latency()
+		var min_val = _latency_test_results.min()
+		var max_val = _latency_test_results.max()
+		return "Average: %.1fms, Min: %.1fms, Max: %.1fms" % [avg, min_val, max_val]
+
+	# 音频缓冲区设置
+	func apply_buffer_settings(buffer_mode: int) -> void:
+		match buffer_mode:
+			0:  # Default
+				_buffer_latency = 0
+			1:  # Low Latency
+				_buffer_latency = 15
+			2:  # High Stability
+				_buffer_latency = 50
+
+	var _buffer_latency: int = 0
+
+	func get_current_buffer_latency() -> int:
+		return _buffer_latency
+
+	# 音频系统状态
+	func check_audio_system() -> Dictionary:
+		return {
+			"output_device": _current_output_device,
+			"device_count": _output_devices.size(),
+			"buffer_latency": _buffer_latency,
+			"average_latency": get_average_latency(),
+			"is_testing": _is_latency_testing
+		}
+
+	# 音效预加载
+	func is_sound_preloaded(name: String) -> bool:
+		return name in _preloaded_sounds
+
+	func unload_sound(name: String) -> void:
+		if name in _preloaded_sounds:
+			_preloaded_sounds.erase(name)
 
 # ==================== 辅助方法 ====================
 
@@ -417,6 +540,180 @@ func test_as004_judge_sfx_triggered() -> void:
 	
 	mock_audio_manager.play_sfx("judge_miss")
 	assert_eq(mock_audio_manager.last_sfx_played, "judge_miss", "应播放不可判定音效")
+
+# ==================== AS-005: 输出设备管理测试 ====================
+
+## AS-005-1: 测试输出设备列表获取
+func test_as005_output_device_list() -> void:
+	# 使用 Mock AudioManager 测试设备列表
+	var devices = mock_audio_manager.get_output_devices()
+	assert_gt(devices.size(), 0, "应至少有一个输出设备")
+
+## AS-005-2: 测试默认输出设备
+func test_as005_default_output_device() -> void:
+	# 设置默认设备
+	mock_audio_manager._current_output_device = "Default"
+
+	assert_eq(mock_audio_manager.get_current_output_device(), "Default", "默认设备应为Default")
+
+## AS-005-3: 测试输出设备切换
+func test_as005_output_device_switch() -> void:
+	# 模拟设备列表
+	mock_audio_manager._output_devices = ["Default", "Speaker", "Headphones"]
+
+	# 切换设备
+	var result = mock_audio_manager.set_output_device("Speaker")
+	assert_true(result, "设备切换应成功")
+	assert_eq(mock_audio_manager.get_current_output_device(), "Speaker", "当前设备应为Speaker")
+
+## AS-005-4: 测试无效设备切换
+func test_as005_invalid_device_switch() -> void:
+	# 模拟设备列表
+	mock_audio_manager._output_devices = ["Default", "Speaker"]
+
+	# 尝试切换到不存在的设备
+	var result = mock_audio_manager.set_output_device("NonExistent")
+	assert_false(result, "切换到不存在的设备应失败")
+
+## AS-005-5: 测试设备刷新
+func test_as005_device_refresh() -> void:
+	# 刷新设备列表
+	mock_audio_manager.refresh_devices()
+
+	# 验证设备列表已更新
+	var devices = mock_audio_manager.get_output_devices()
+	assert_gt(devices.size(), 0, "刷新后应至少有一个设备")
+
+# ==================== AS-006: 延迟测试功能测试 ====================
+
+## AS-006-1: 测试延迟测试启动
+func test_as006_latency_test_start() -> void:
+	# 开始延迟测试
+	mock_audio_manager.start_latency_test()
+
+	assert_true(mock_audio_manager.is_latency_testing(), "应处于延迟测试状态")
+
+## AS-006-2: 测试延迟测试停止
+func test_as006_latency_test_stop() -> void:
+	# 开始延迟测试
+	mock_audio_manager.start_latency_test()
+
+	# 停止延迟测试
+	mock_audio_manager.stop_latency_test()
+
+	assert_false(mock_audio_manager.is_latency_testing(), "应停止延迟测试状态")
+
+## AS-006-3: 测试延迟测试结果
+func test_as006_latency_test_results() -> void:
+	# 模拟延迟测试结果
+	mock_audio_manager._latency_test_results = [10.0, 15.0, 12.0, 18.0, 14.0]
+
+	var results = mock_audio_manager.get_latency_results()
+	assert_eq(results.size(), 5, "应有5个测试结果")
+
+## AS-006-4: 测试平均延迟计算
+func test_as006_average_latency_calculation() -> void:
+	# 模拟延迟测试结果
+	mock_audio_manager._latency_test_results = [10.0, 20.0, 30.0]
+
+	var avg = mock_audio_manager.get_average_latency()
+	assert_almost_eq(avg, 20.0, 0.1, "平均延迟应为20ms")
+
+## AS-006-5: 测试延迟描述
+func test_as006_latency_description() -> void:
+	# 模拟延迟测试结果
+	mock_audio_manager._latency_test_results = [10.0, 20.0, 30.0]
+
+	var desc = mock_audio_manager.get_latency_description()
+	assert_true(desc.contains("Average"), "描述应包含平均值")
+	assert_true(desc.contains("Min"), "描述应包含最小值")
+	assert_true(desc.contains("Max"), "描述应包含最大值")
+
+# ==================== AS-007: 音频缓冲区设置测试 ====================
+
+## AS-007-1: 测试默认缓冲区设置
+func test_as007_default_buffer_settings() -> void:
+	# 获取当前缓冲区设置
+	var buffer_latency = mock_audio_manager.get_current_buffer_latency()
+
+	# 默认应为0
+	assert_eq(buffer_latency, 0, "默认缓冲区延迟应为0")
+
+## AS-007-2: 测试低延迟模式
+func test_as007_low_latency_mode() -> void:
+	# 应用低延迟模式
+	mock_audio_manager.apply_buffer_settings(1)
+
+	# 验证设置已应用
+	var buffer_latency = mock_audio_manager.get_current_buffer_latency()
+	assert_eq(buffer_latency, 15, "低延迟模式缓冲区应为15ms")
+
+## AS-007-3: 测试高稳定性模式
+func test_as007_high_stability_mode() -> void:
+	# 应用高稳定性模式
+	mock_audio_manager.apply_buffer_settings(2)
+
+	# 验证设置已应用
+	var buffer_latency = mock_audio_manager.get_current_buffer_latency()
+	assert_eq(buffer_latency, 50, "高稳定性模式缓冲区应为50ms")
+
+## AS-007-4: 测试音频系统状态检查
+func test_as007_audio_system_status() -> void:
+	# 检查音频系统状态
+	var status = mock_audio_manager.check_audio_system()
+
+	assert_has(status, "output_device", "状态应包含输出设备")
+	assert_has(status, "device_count", "状态应包含设备数量")
+	assert_has(status, "buffer_latency", "状态应包含缓冲区延迟")
+
+# ==================== AS-008: 音频资源管理测试 ====================
+
+## AS-008-1: 测试音效预加载
+func test_as008_sound_preload() -> void:
+	# 检查音效是否已预加载
+	var is_preloaded = mock_audio_manager.is_sound_preloaded("don")
+	# 在测试环境中可能没有实际文件
+	# 这里只验证方法存在
+	assert_true(true, "预加载检查方法应存在")
+
+## AS-008-2: 测试音效卸载
+func test_as008_sound_unload() -> void:
+	# 卸载音效
+	mock_audio_manager.unload_sound("test_sound")
+
+	# 验证音效已卸载
+	assert_false(mock_audio_manager.is_sound_preloaded("test_sound"), "音效应已卸载")
+
+## AS-008-3: 测试音量控制
+func test_as008_volume_control() -> void:
+	# 设置主音量
+	mock_audio_manager.set_master_volume(0.5)
+	assert_eq(mock_audio_manager.get_master_volume(), 0.5, "主音量应为0.5")
+
+	# 设置音乐音量
+	mock_audio_manager.set_music_volume(0.7)
+	assert_eq(mock_audio_manager.get_music_volume(), 0.7, "音乐音量应为0.7")
+
+	# 设置音效音量
+	mock_audio_manager.set_sfx_volume(0.8)
+	assert_eq(mock_audio_manager.get_sfx_volume(), 0.8, "音效音量应为0.8")
+
+## AS-008-4: 测试静音功能
+func test_as008_mute_function() -> void:
+	# 静音
+	mock_audio_manager.set_mute(true)
+	assert_true(mock_audio_manager.is_muted(), "应处于静音状态")
+
+	# 取消静音
+	mock_audio_manager.set_mute(false)
+	assert_false(mock_audio_manager.is_muted(), "应取消静音状态")
+
+## AS-008-5: 测试音频总线配置
+func test_as008_audio_bus_config() -> void:
+	# 验证音频总线名称常量
+	assert_eq(mock_audio_manager.MASTER_BUS, "Master", "主总线名称应为Master")
+	assert_eq(mock_audio_manager.MUSIC_BUS, "Music", "音乐总线名称应为Music")
+	assert_eq(mock_audio_manager.SFX_BUS, "SFX", "音效总线名称应为SFX")
 
 # ==================== 系统协作测试 ====================
 

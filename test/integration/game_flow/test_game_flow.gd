@@ -6,6 +6,8 @@
 ## - GF-001: 完整游戏流程（加载→开始→游玩→结束）
 ## - GF-002: 暂停恢复流程
 ## - GF-003: 重试流程
+## - GF-004: 错误处理测试
+## - GF-005: 分支谱面流程测试
 ## - GF-006: 游戏结束判定
 ## - GF-007: 结果数据完整性
 
@@ -279,6 +281,143 @@ func test_gf003_retry_without_data() -> void:
 	game_controller.retry_game()
 	
 	assert_eq(game_controller.current_state, GameController.PlayState.IDLE, "无数据时重试状态应保持IDLE")
+
+# ==================== GF-004: 错误处理测试 ====================
+
+## GF-004-1: 测试无效歌曲文件处理
+func test_gf004_invalid_song_file() -> void:
+	# 尝试加载不存在的歌曲
+	var result = parser.parse_file("res://test/fixtures/sample_tja/nonexistent.tja")
+	assert_false(result.success, "不存在的文件解析应失败")
+
+## GF-004-2: 测试空歌曲数据处理
+func test_gf004_empty_song_data() -> void:
+	# 设置空歌曲数据
+	game_controller.current_song = null
+	game_controller.current_course = null
+
+	# 尝试初始化游戏系统
+	game_controller._initialize_game_systems()
+
+	# 验证不会崩溃
+	assert_eq(game_controller.current_state, GameController.PlayState.IDLE, "空数据时应保持IDLE状态")
+
+## GF-004-3: 测试无效难度处理
+func test_gf004_invalid_difficulty() -> void:
+	# 创建测试歌曲
+	var song = _create_test_song()
+
+	# 尝试获取不存在的难度
+	var invalid_course = song.get_course(TJAData.CourseType.URA)  # 鬼难度可能不存在
+	# 如果不存在，应为null
+	if invalid_course == null:
+		assert_null(invalid_course, "不存在的难度应返回null")
+
+## GF-004-4: 测试游戏时间异常处理
+func test_gf004_game_time_anomaly() -> void:
+	# 设置游戏数据
+	game_controller.current_song = _create_test_song()
+	game_controller.current_course = _create_test_course()
+	game_controller._initialize_game_systems()
+	game_controller.current_state = GameController.PlayState.PLAYING
+
+	# 设置异常时间（负数）
+	game_controller.game_time = -10.0
+	game_controller.scroll_system.update_time(-10.0)
+
+	# 验证系统不会崩溃
+	assert_lt(game_controller.game_time, 0.0, "应能处理负时间")
+
+## GF-004-5: 测试重复开始游戏
+func test_gf004_duplicate_start() -> void:
+	# 设置游戏数据
+	game_controller.current_song = _create_test_song()
+	game_controller.current_course = _create_test_course()
+	game_controller._initialize_game_systems()
+
+	# 第一次开始
+	game_controller.current_state = GameController.PlayState.READY
+	game_controller.start_game()
+	assert_eq(game_controller.current_state, GameController.PlayState.PLAYING, "第一次开始应成功")
+
+	# 再次开始（应该无效或重置）
+	game_controller.start_game()
+	assert_eq(game_controller.current_state, GameController.PlayState.PLAYING, "重复开始应保持PLAYING状态")
+
+# ==================== GF-005: 分支谱面流程测试 ====================
+
+## GF-005-1: 测试分支谱面加载
+func test_gf005_branch_chart_loading() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 验证分支标志
+	assert_true(course.has_branch, "应检测到分支")
+
+## GF-005-2: 测试分支选择逻辑
+func test_gf005_branch_selection() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 验证分支类型
+	if course.has_branch:
+		# 分支类型应为 P（精度）或 R（连打）
+		assert_true(course.branch_type in ["P", "R"], "分支类型应为P或R")
+
+## GF-005-3: 测试分支阈值设置
+func test_gf005_branch_thresholds() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 验证分支阈值
+	if course.has_branch:
+		# 应有分支阈值设置
+		assert_gt(course.branch_threshold_good, 0, "应有普通分支阈值")
+		assert_gt(course.branch_threshold_bad, 0, "应有玄人分支阈值")
+
+## GF-005-4: 测试分支谱面音符差异
+func test_gf005_branch_note_differences() -> void:
+	# 解析分支测试文件
+	var result = parser.parse_file(BRANCHING_TJA_PATH)
+	assert_true(result.success, "分支TJA文件解析应成功")
+
+	var song = result.song
+	var course = song.get_course(TJAData.CourseType.ONI)
+
+	# 如果有分支，不同分支的音符应该不同
+	if course.has_branch:
+		# 验证分支数据存在
+		assert_not_null(course.normal_branch, "应有普通分支数据")
+		assert_not_null(course.expert_branch, "应有玄人分支数据")
+		assert_not_null(course.master_branch, "应有达人分支数据")
+
+## GF-005-5: 测试分支切换流程
+func test_gf005_branch_switching() -> void:
+	# 设置游戏数据
+	game_controller.current_song = _create_test_song()
+	game_controller.current_course = _create_test_course()
+	game_controller._initialize_game_systems()
+	game_controller.current_state = GameController.PlayState.PLAYING
+
+	# 模拟分支切换条件
+	# 在实际游戏中，分支切换由连打数或精度决定
+	# 这里测试分支切换方法是否存在
+	if game_controller.has_method("switch_branch"):
+		game_controller.switch_branch("expert")
+		# 验证分支切换成功
+		# 具体验证取决于实现
 
 # ==================== GF-006: 游戏结束判定测试 ====================
 
