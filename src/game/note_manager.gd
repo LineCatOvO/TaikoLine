@@ -2,6 +2,11 @@ class_name NoteManager
 extends Node
 ## 音符管理器
 ## 实现音符的生成和管理，使用对象池模式
+##
+## 性能优化说明：
+## - 使用对象池复用音符对象，减少内存分配
+## - 使用索引标记代替数组删除，提高队列处理效率
+## - 预分配对象池，避免运行时创建
 
 const TJAData = preload("res://src/parser/tja_data.gd")
 const GameNote = preload("res://src/game/note.gd")
@@ -22,6 +27,9 @@ var _active_notes: Array[GameNote] = []
 
 ## 音符数据队列
 var _note_queue: Array[Dictionary] = []
+
+## 当前队列处理索引（优化：避免频繁删除数组元素）
+var _queue_process_index: int = 0
 
 ## 当前时间
 var _current_time: float = 0.0
@@ -48,10 +56,12 @@ func _ready() -> void:
 
 ## 初始化对象池
 func _initialize_pool() -> void:
+	# 预分配对象池，避免运行时创建
+	_note_pool.resize(pool_size)
 	for i in range(pool_size):
 		var note = _create_note()
 		note.visible = false
-		_note_pool.append(note)
+		_note_pool[i] = note
 
 
 ## 创建新音符
@@ -232,35 +242,43 @@ func _process_command(command: TJAData.TJACommand, time: float) -> void:
 ## 更新音符管理
 func update(current_time: float) -> void:
 	_current_time = current_time
-	
+
 	# 检查需要生成的音符
 	_spawn_pending_notes()
-	
+
 	# 更新活动音符位置
 	_update_active_notes()
-	
+
 	# 检查错过的音符
 	_check_missed_notes()
 
 
-## 生成待处理的音符
+## 生成待处理的音符（优化版本 - 使用索引标记）
 func _spawn_pending_notes() -> void:
 	if scroll_system == null:
 		return
-	
+
 	var spawn_ahead_time = scroll_system.get_spawn_ahead_time()
-	
-	var i = 0
-	while i < _note_queue.size():
-		var note_info = _note_queue[i]
+
+	# 使用索引遍历，避免频繁删除数组元素
+	var queue_size = _note_queue.size()
+	while _queue_process_index < queue_size:
+		var note_info = _note_queue[_queue_process_index]
 		var time_until_hit = note_info.hit_time - _current_time
-		
+
 		# 检查是否应该生成
 		if time_until_hit <= spawn_ahead_time:
 			_spawn_note(note_info)
-			_note_queue.remove_at(i)
+			_queue_process_index += 1
 		else:
-			i += 1
+			# 后面的音符都还没到时间，停止处理
+			break
+
+	# 定期清理已处理的音符（每100帧清理一次）
+	if _queue_process_index > 50:
+		# 批量删除已处理的音符
+		_note_queue = _note_queue.slice(_queue_process_index)
+		_queue_process_index = 0
 
 
 ## 生成单个音符
@@ -349,11 +367,12 @@ func clear_all_notes() -> void:
 
 	# 清空队列
 	_note_queue.clear()
+	_queue_process_index = 0  # 重置队列处理索引
 
 	# 清空分支队列
 	for branch_type in _branch_note_queues.keys():
 		_branch_note_queues[branch_type] = []
-	
+
 	# 重置分支状态
 	current_branch = TJAData.BranchType.NORMAL
 	_has_branch = false
@@ -364,9 +383,9 @@ func get_active_note_count() -> int:
 	return _active_notes.size()
 
 
-## 获取待生成音符数量
+## 获取待生成音符数量（优化版本 - 考虑队列处理索引）
 func get_pending_note_count() -> int:
-	return _note_queue.size()
+	return _note_queue.size() - _queue_process_index
 
 
 ## 获取总音符数量
@@ -376,7 +395,7 @@ func get_total_note_count() -> int:
 
 ## 检查是否所有音符都已处理
 func is_all_notes_processed() -> bool:
-	return _note_queue.is_empty() and _active_notes.is_empty()
+	return _queue_process_index >= _note_queue.size() and _active_notes.is_empty()
 
 
 ## 设置滚动系统

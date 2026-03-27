@@ -2,6 +2,11 @@ class_name GameNote
 extends Area2D
 ## 音符类
 ## 实现音符的视觉表现和状态管理
+## 
+## 性能优化说明：
+## - 使用静态纹理缓存避免重复创建图像
+## - 预渲染所有音符类型的纹理
+## - 对象池复用减少内存分配
 
 ## 音符类型枚举（引用TJAData中的定义）
 const TJAData = preload("res://src/parser/tja_data.gd")
@@ -18,6 +23,11 @@ enum NoteState {
 ## 信号
 signal note_judged(note: GameNote, judge_result: String)
 signal note_missed(note: GameNote)
+
+## ==================== 纹理缓存（静态） ====================
+## 缓存所有音符类型的纹理，避免重复创建
+static var _texture_cache: Dictionary = {}
+static var _cache_initialized: bool = false
 
 ## 音符数据
 var note_type: TJAData.NoteType = TJAData.NoteType.DON
@@ -54,13 +64,106 @@ func _setup_components() -> void:
 	# 创建精灵
 	sprite = Sprite2D.new()
 	add_child(sprite)
-	
+
 	# 创建动画播放器
 	animation_player = AnimationPlayer.new()
 	add_child(animation_player)
+
+	# 初始化纹理缓存（仅首次）
+	_ensure_texture_cache()
 	
 	# 设置音符外观
 	_update_appearance()
+
+
+## 确保纹理缓存已初始化
+static func _ensure_texture_cache() -> void:
+	if _cache_initialized:
+		return
+	
+	_cache_initialized = true
+	# 预渲染所有音符类型的纹理
+	_pre_render_all_textures()
+
+
+## 预渲染所有音符类型的纹理
+static func _pre_render_all_textures() -> void:
+	# 定义所有需要预渲染的音符类型
+	var note_types := [
+		TJAData.NoteType.DON,
+		TJAData.NoteType.KA,
+		TJAData.NoteType.DON_BIG,
+		TJAData.NoteType.KA_BIG,
+		TJAData.NoteType.RENDA,
+		TJAData.NoteType.RENDA_BIG,
+		TJAData.NoteType.BALLOON,
+		TJAData.NoteType.KUSUDAMA,
+		TJAData.NoteType.DON_DOUBLE,
+		TJAData.NoteType.KA_DOUBLE,
+		TJAData.NoteType.ADLIB,
+	]
+	
+	for note_t in note_types:
+		_get_or_create_texture(note_t)
+
+
+## 获取或创建纹理（带缓存）
+static func _get_or_create_texture(note_t: int) -> ImageTexture:
+	# 检查缓存
+	if note_t in _texture_cache:
+		return _texture_cache[note_t]
+	
+	# 通过SkinManager获取音符类型对应的配置键名
+	var note_type_key := SkinManager.get_note_type_key(note_t)
+	
+	# 从SkinManager获取颜色和大小
+	var color: Color = SkinManager.get_note_color(note_type_key)
+	var size: float = SkinManager.get_note_size(note_type_key)
+	var outline_color: Color = SkinManager.get_note_outline_color(note_type_key)
+	var outline_width: float = SkinManager.get_note_outline_width(note_type_key)
+	
+	# 创建纹理
+	var texture = _create_circle_texture(size, color, outline_color, outline_width)
+	_texture_cache[note_t] = texture
+	
+	return texture
+
+
+## 创建圆形纹理（优化版本）
+static func _create_circle_texture(size: float, color: Color, outline_color: Color, outline_width: float) -> ImageTexture:
+	var image = Image.create(int(size), int(size), false, Image.FORMAT_RGBA8)
+	image.fill(Color.TRANSPARENT)
+	var center = Vector2(size / 2.0, size / 2.0)
+	var radius = size / 2.0 - outline_width
+	
+	# 使用更高效的绘制方式
+	var radius_sq = radius * radius
+	var outline_radius_sq = (radius + outline_width) * (radius + outline_width)
+	
+	for x in range(int(size)):
+		for y in range(int(size)):
+			var dx = x - center.x
+			var dy = y - center.y
+			var dist_sq = dx * dx + dy * dy
+			
+			if dist_sq <= radius_sq:
+				image.set_pixel(x, y, color)
+			elif dist_sq <= outline_radius_sq:
+				image.set_pixel(x, y, outline_color)
+	
+	return ImageTexture.create_from_image(image)
+
+
+## 更新音符外观（优化版本 - 使用缓存）
+func _update_appearance() -> void:
+	# 检查sprite是否有效
+	if sprite == null:
+		return
+
+	# 从缓存获取纹理
+	var texture = _get_or_create_texture(note_type)
+	if texture:
+		sprite.texture = texture
 
 
 func _setup_collision() -> void:
@@ -70,41 +173,6 @@ func _setup_collision() -> void:
 	shape.radius = 30.0 if is_big() else 20.0
 	collision.shape = shape
 	add_child(collision)
-
-
-## 更新音符外观
-func _update_appearance() -> void:
-	# 检查sprite是否有效
-	if sprite == null:
-		return
-	
-	# 通过SkinManager获取音符类型对应的配置键名
-	var note_type_key := SkinManager.get_note_type_key(note_type)
-	
-	# 从SkinManager获取颜色和大小
-	var color: Color = SkinManager.get_note_color(note_type_key)
-	var size: float = SkinManager.get_note_size(note_type_key)
-	var outline_color: Color = SkinManager.get_note_outline_color(note_type_key)
-	var outline_width: float = SkinManager.get_note_outline_width(note_type_key)
-
-	# 创建简单的圆形纹理
-	var image = Image.create(int(size), int(size), false, Image.FORMAT_RGBA8)
-	image.fill(Color.TRANSPARENT)
-	var center = Vector2(size / 2.0, size / 2.0)
-	var radius = size / 2.0 - outline_width
-
-	# 绘制圆形
-	for x in range(int(size)):
-		for y in range(int(size)):
-			var dist = Vector2(x, y).distance_to(center)
-			if dist <= radius:
-				image.set_pixel(x, y, color)
-			elif dist <= radius + outline_width:
-				# 边缘（使用轮廓颜色）
-				image.set_pixel(x, y, outline_color)
-
-	var texture = ImageTexture.create_from_image(image)
-	sprite.texture = texture
 
 
 ## 是否为大音符
@@ -270,3 +338,17 @@ func setup(data: TJAData.TJANote, p_hit_time: float) -> void:
 	renda_count = data.renda_count
 	hit_time = p_hit_time
 	_update_appearance()
+
+
+## ==================== 纹理缓存管理 ====================
+
+## 清除纹理缓存（皮肤切换时调用）
+static func clear_texture_cache() -> void:
+	_texture_cache.clear()
+	_cache_initialized = false
+
+
+## 重新初始化纹理缓存（皮肤切换后调用）
+static func refresh_texture_cache() -> void:
+	clear_texture_cache()
+	_ensure_texture_cache()

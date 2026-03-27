@@ -2,7 +2,7 @@ class_name GameplayUI
 extends Control
 ## 游戏界面
 ## 显示游戏过程中的所有UI元素
-## 
+##
 ## 设计参考：太鼓达人虹版（Taiko no Tatsujin Nijiiro）
 ## - 音符轨道：中央横向轨道，带渐变效果
 ## - 判定线：轨道右侧垂直判定线，带发光
@@ -10,6 +10,8 @@ extends Control
 ## - 连击显示：中央下方，大字体
 ## - 魂槽：顶部进度条，带阈值标记
 ## - 分支指示：当前分支类型显示
+##
+## 更新：2026-03-27 - 优化动画效果
 
 const TJAData = preload("res://src/parser/tja_data.gd")
 const GameController = preload("res://src/game/game_controller.gd")
@@ -18,6 +20,7 @@ const ComboDisplay = preload("res://src/ui/components/combo_display.gd")
 const SoulGauge = preload("res://src/ui/components/soul_gauge.gd")
 const ScoreDisplay = preload("res://src/ui/components/score_display.gd")
 const LyricsDisplay = preload("res://src/ui/components/lyrics_display.gd")
+const SceneTransition = preload("res://src/ui/components/scene_transition.gd")
 
 ## 信号
 signal game_finished(result: Dictionary)
@@ -431,31 +434,67 @@ func _on_combo_updated(combo: int) -> void:
 func _update_combo_display(combo: int) -> void:
 	# 更新文本
 	_combo_label.text = str(combo)
-	
+
 	# 更新可见性
 	_combo_display.visible = combo > 0
-	
+
 	if combo > 0:
 		# 播放缩放动画
 		if _combo_tween:
 			_combo_tween.kill()
-		
+
 		_combo_tween = create_tween()
-		_combo_tween.tween_property(_combo_label, "scale", Vector2(1.2, 1.2), 0.1)
-		_combo_tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.1)
-		
+		_combo_tween.set_ease(Tween.EASE_OUT)
+		_combo_tween.set_trans(Tween.TRANS_BACK)
+
+		# 弹跳缩放动画
+		_combo_tween.tween_property(_combo_label, "scale", Vector2(1.25, 1.25), 0.08)
+		_combo_tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.12)
+
 		# 高亮模式（50连击以上）
 		if combo >= 50:
 			_combo_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.0))  # 金色
+			# 添加发光效果
+			if combo % 10 == 0:
+				_play_combo_milestone_effect(combo)
+		elif combo >= 10:
+			_combo_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))  # 浅金色
 		else:
 			_combo_label.add_theme_color_override("font_color", Color.WHITE)
 	else:
 		# 断连动画
 		if _combo_tween:
 			_combo_tween.kill()
-		
+
 		_combo_tween = create_tween()
-		_combo_tween.tween_property(_combo_label, "modulate:a", 0.0, 0.3)
+		_combo_tween.set_ease(Tween.EASE_IN)
+		_combo_tween.set_trans(Tween.TRANS_QUAD)
+		_combo_tween.tween_property(_combo_label, "modulate:a", 0.0, 0.25)
+		_combo_tween.tween_callback(_reset_combo_display)
+
+
+## 重置连击显示
+func _reset_combo_display() -> void:
+	_combo_label.modulate.a = 1.0
+	_combo_label.scale = Vector2.ONE
+
+
+## 播放连击里程碑效果（每10连击）
+## 参数 combo: 当前连击数
+func _play_combo_milestone_effect(combo: int) -> void:
+	# 创建脉冲效果
+	var pulse_tween = create_tween()
+	pulse_tween.set_ease(Tween.EASE_OUT)
+	pulse_tween.set_trans(Tween.TRANS_SINE)
+
+	# 缩放脉冲
+	pulse_tween.tween_property(_combo_label, "scale", Vector2(1.4, 1.4), 0.1)
+	pulse_tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.15)
+
+	# 颜色闪烁
+	var color_tween = create_tween()
+	color_tween.tween_property(_combo_label, "modulate:v", 1.5, 0.1)
+	color_tween.tween_property(_combo_label, "modulate:v", 1.0, 0.15)
 
 
 ## 时间更新回调
@@ -479,31 +518,63 @@ func _on_time_updated(current_time: float) -> void:
 
 ## 更新魂槽显示
 func _update_soul_gauge(percentage: float) -> void:
+	var old_soul = _current_soul
 	_current_soul = clamp(percentage, 0.0, 100.0)
-	
+
 	# 更新标签
 	_soul_gauge_label.text = "%.1f%%" % _current_soul
-	
+
 	# 更新填充条宽度
 	var target_width = (_current_soul / 100.0) * _soul_gauge_container.size.x
-	
+
 	if _soul_tween:
 		_soul_tween.kill()
-	
+
 	_soul_tween = create_tween()
-	_soul_tween.tween_property(_soul_gauge_fill, "size:x", target_width, 0.3)
-	
+	_soul_tween.set_ease(Tween.EASE_OUT)
+	_soul_tween.set_trans(Tween.TRANS_QUART)
+	_soul_tween.tween_property(_soul_gauge_fill, "size:x", target_width, 0.25)
+
 	# 更新颜色
 	var target_color: Color
 	if _current_soul >= 80.0:
 		target_color = Color(1.0, 0.8, 0.0)  # 金色（清除状态）
+		# 达到清除阈值时播放特效
+		if old_soul < 80.0:
+			_play_soul_threshold_effect()
 	elif _current_soul < 30.0:
 		target_color = Color(1.0, 0.3, 0.3)  # 红色（危险状态）
+		# 危险状态时添加脉冲效果
+		if old_soul >= 30.0:
+			_play_soul_danger_effect()
 	else:
 		target_color = Color(0.3, 0.6, 1.0)  # 蓝色（正常状态）
-	
+
 	var color_tween = create_tween()
+	color_tween.set_ease(Tween.EASE_OUT)
+	color_tween.set_trans(Tween.TRANS_QUAD)
 	color_tween.tween_property(_soul_gauge_fill, "color", target_color, 0.2)
+
+
+## 播放魂槽达到阈值特效
+func _play_soul_threshold_effect() -> void:
+	# 闪烁效果
+	var flash_tween = create_tween()
+	flash_tween.tween_property(_soul_gauge_fill, "modulate:v", 1.5, 0.1)
+	flash_tween.tween_property(_soul_gauge_fill, "modulate:v", 1.0, 0.15)
+
+	# 缩放脉冲
+	var scale_tween = create_tween()
+	scale_tween.tween_property(_soul_gauge_container, "scale", Vector2(1.02, 1.05), 0.1)
+	scale_tween.tween_property(_soul_gauge_container, "scale", Vector2.ONE, 0.15)
+
+
+## 播放魂槽危险状态特效
+func _play_soul_danger_effect() -> void:
+	# 红色闪烁
+	var flash_tween = create_tween()
+	flash_tween.tween_property(_soul_gauge_fill, "modulate:a", 0.6, 0.15)
+	flash_tween.tween_property(_soul_gauge_fill, "modulate:a", 1.0, 0.15)
 
 
 ## 皮肤切换回调
@@ -617,7 +688,7 @@ func show_judge_result(judge_type: String) -> void:
 	# 停止之前的动画
 	if _judge_tween:
 		_judge_tween.kill()
-	
+
 	# 设置文本和颜色
 	match judge_type:
 		"良":
@@ -631,14 +702,26 @@ func show_judge_result(judge_type: String) -> void:
 			_judge_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))  # 红色
 		_:
 			return
-	
-	# 重置透明度并显示
+
+	# 重置状态
 	_judge_label.modulate.a = 1.0
-	
-	# 创建淡出动画
+	_judge_label.scale = Vector2(1.3, 1.3)
+
+	# 创建动画序列
 	_judge_tween = create_tween()
-	_judge_tween.tween_interval(0.5)  # 显示持续时间
-	_judge_tween.tween_property(_judge_label, "modulate:a", 0.0, 0.2)  # 淡出
+	_judge_tween.set_ease(Tween.EASE_OUT)
+	_judge_tween.set_trans(Tween.TRANS_BACK)
+
+	# 缩放弹跳动画
+	_judge_tween.tween_property(_judge_label, "scale", Vector2.ONE, 0.15)
+
+	# 等待显示
+	_judge_tween.tween_interval(0.35)
+
+	# 淡出动画
+	_judge_tween.set_ease(Tween.EASE_IN)
+	_judge_tween.set_trans(Tween.TRANS_QUAD)
+	_judge_tween.tween_property(_judge_label, "modulate:a", 0.0, 0.15)
 
 
 ## 获取游戏控制器

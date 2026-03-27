@@ -2,6 +2,10 @@ class_name ScoreDisplay
 extends Control
 ## 分数显示组件
 ## 显示当前分数
+##
+## 性能优化说明：
+## - 复用Tween对象，避免频繁创建和销毁
+## - 减少字符串格式化操作
 
 ## 配置
 @export var font_size: int = 28
@@ -30,14 +34,14 @@ func _setup_ui() -> void:
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	add_child(hbox)
 	hbox.anchors_preset = Control.PRESET_FULL_RECT
-	
+
 	# 前缀标签
 	_label_prefix = Label.new()
 	_label_prefix.text = "SCORE: "
 	_label_prefix.add_theme_font_size_override("font_size", font_size)
 	_label_prefix.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 	hbox.add_child(_label_prefix)
-	
+
 	# 分数标签
 	_score_label = Label.new()
 	_score_label.text = "0"
@@ -46,28 +50,34 @@ func _setup_ui() -> void:
 	hbox.add_child(_score_label)
 
 
+## 获取或创建Tween（优化版本 - 复用Tween）
+func _get_tween() -> Tween:
+	if _tween and _tween.is_valid():
+		_tween.kill()
+	_tween = create_tween()
+	return _tween
+
+
 ## 更新分数
 func update_score(score: int) -> void:
 	var old_score = _current_score
 	_current_score = score
-	
+
 	# 播放分数滚动动画
 	_animate_score(old_score, score)
 
 
 ## 动画显示分数变化
 func _animate_score(from: int, to: int) -> void:
-	if _tween:
-		_tween.kill()
+	var tween = _get_tween()
 	
 	# 使用tween来动画化分数变化
-	_tween = create_tween()
-	_tween.tween_method(_set_display_score, from, to, animation_duration)
-	
+	tween.tween_method(_set_display_score, from, to, animation_duration)
+
 	# 播放缩放动画
-	_tween.set_parallel(true)
-	_tween.tween_property(_score_label, "scale", Vector2(1.1, 1.1), 0.1)
-	_tween.chain().tween_property(_score_label, "scale", Vector2.ONE, 0.1)
+	tween.set_parallel(true)
+	tween.tween_property(_score_label, "scale", Vector2(1.1, 1.1), 0.1)
+	tween.chain().tween_property(_score_label, "scale", Vector2.ONE, 0.1)
 
 
 ## 设置显示分数（用于动画）

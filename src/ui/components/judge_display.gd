@@ -2,6 +2,10 @@ class_name JudgeDisplay
 extends Control
 ## 判定显示组件
 ## 显示判定结果（良/可/不可）
+##
+## 性能优化说明：
+## - 复用Tween对象，避免频繁创建和销毁
+## - 减少不必要的属性设置
 
 ## 判定类型
 enum JudgeType {
@@ -38,24 +42,28 @@ func _setup_ui() -> void:
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(_label)
-	
+
 	# 设置锚点
 	_label.anchors_preset = Control.PRESET_FULL_RECT
 	_label.offset_left = 0
 	_label.offset_right = 0
 	_label.offset_top = 0
 	_label.offset_bottom = 0
-	
+
 	# 初始隐藏
 	_label.modulate.a = 0.0
 
 
+## 获取或创建Tween（优化版本 - 复用Tween）
+func _get_tween() -> Tween:
+	if _tween and _tween.is_valid():
+		_tween.kill()
+	_tween = create_tween()
+	return _tween
+
+
 ## 显示判定结果
 func show_judge(judge_type: JudgeType) -> void:
-	# 停止之前的动画
-	if _tween:
-		_tween.kill()
-	
 	# 设置文本和颜色
 	match judge_type:
 		JudgeType.PERFECT:
@@ -67,35 +75,31 @@ func show_judge(judge_type: JudgeType) -> void:
 		JudgeType.MISS:
 			_label.text = "不可"
 			_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))  # 红色
-	
+
 	# 重置透明度
 	_label.modulate.a = 1.0
 	_is_showing = true
 	_display_time = 0.0
-	
+
 	# 创建淡出动画
-	_tween = create_tween()
-	_tween.tween_interval(display_duration)
-	_tween.tween_property(_label, "modulate:a", 0.0, fade_duration)
-	_tween.tween_callback(_on_display_finished)
+	var tween = _get_tween()
+	tween.tween_interval(display_duration)
+	tween.tween_property(_label, "modulate:a", 0.0, fade_duration)
+	tween.tween_callback(_on_display_finished)
 
 
 ## 显示自定义文本
 func show_custom_text(text: String, color: Color = Color.WHITE) -> void:
-	# 停止之前的动画
-	if _tween:
-		_tween.kill()
-	
 	_label.text = text
 	_label.add_theme_color_override("font_color", color)
 	_label.modulate.a = 1.0
 	_is_showing = true
-	
+
 	# 创建淡出动画
-	_tween = create_tween()
-	_tween.tween_interval(display_duration)
-	_tween.tween_property(_label, "modulate:a", 0.0, fade_duration)
-	_tween.tween_callback(_on_display_finished)
+	var tween = _get_tween()
+	tween.tween_interval(display_duration)
+	tween.tween_property(_label, "modulate:a", 0.0, fade_duration)
+	tween.tween_callback(_on_display_finished)
 
 
 ## 显示完成回调

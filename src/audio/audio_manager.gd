@@ -48,6 +48,13 @@ var _audio_offset_ms: float = 0.0
 ## 预加载的音效资源
 var _preloaded_sounds: Dictionary = {}
 
+## ==================== 音效播放器池 ====================
+## 音效播放器池（用于备用播放）
+var _sfx_player_pool: Array[AudioStreamPlayer] = []
+
+## 最大池大小
+const SFX_POOL_SIZE: int = 8
+
 ## ==================== 音频输出设备相关变量 ====================
 
 ## 当前选中的输出设备
@@ -283,24 +290,59 @@ func play_sfx(sound_name: String, volume_db: float = 0.0) -> void:
 	if _sfx_player and _sfx_player.has_method("play_sound"):
 		_sfx_player.play_sound(sound_name, volume_db)
 	elif sound_name in _preloaded_sounds:
-		# 直接播放预加载的音效
+		# 直接播放预加载的音效（使用对象池）
 		_play_sfx_direct(sound_name, volume_db)
 
 
-## 直接播放音效（备用方法）
+## 直接播放音效（优化版本 - 使用对象池）
 func _play_sfx_direct(sound_name: String, volume_db: float = 0.0) -> void:
 	if not sound_name in _preloaded_sounds:
 		return
-	
-	var player = AudioStreamPlayer.new()
+
+	# 从池中获取播放器
+	var player = _get_sfx_player_from_pool()
+	if player == null:
+		return  # 池已满，跳过播放
+
 	player.stream = _preloaded_sounds[sound_name]
 	player.volume_db = volume_db
 	player.bus = SFX_BUS
-	add_child(player)
 	player.play()
-	
-	# 播放完成后自动删除
-	player.finished.connect(player.queue_free)
+
+
+## 从池中获取音效播放器
+func _get_sfx_player_from_pool() -> AudioStreamPlayer:
+	# 尝试从池中获取空闲的播放器
+	for player in _sfx_player_pool:
+		if not player.playing:
+			return player
+
+	# 池未满，创建新播放器
+	if _sfx_player_pool.size() < SFX_POOL_SIZE:
+		var player = AudioStreamPlayer.new()
+		add_child(player)
+		_sfx_player_pool.append(player)
+		return player
+
+	# 池已满，尝试复用最早完成的播放器
+	for player in _sfx_player_pool:
+		if not player.playing:
+			return player
+
+	return null
+
+
+## 清理音效播放器池
+func _cleanup_sfx_player_pool() -> void:
+	# 移除所有已停止的播放器（保留最小数量）
+	var players_to_remove: Array[AudioStreamPlayer] = []
+	for player in _sfx_player_pool:
+		if not player.playing and _sfx_player_pool.size() - players_to_remove.size() > 2:
+			players_to_remove.append(player)
+
+	for player in players_to_remove:
+		_sfx_player_pool.erase(player)
+		player.queue_free()
 
 
 ## 播放鼓声（红音符）

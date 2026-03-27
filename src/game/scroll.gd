@@ -2,6 +2,11 @@ class_name ScrollSystem
 extends Node
 ## 滚动系统
 ## 实现音符滚动、BPM变化处理、SCROLL命令处理和时间到位置转换
+##
+## 性能优化说明：
+## - 使用二分查找优化BPM/滚动速度变化点查找
+## - 缓存当前索引，避免每次从头搜索
+## - 预计算每秒像素数，减少重复计算
 
 ## 信号
 signal scroll_speed_changed(new_speed: float)
@@ -16,7 +21,7 @@ signal bpm_changed(new_bpm: float)
 class BPMChange:
 	var time: float    ## 变化发生时间（秒）
 	var bpm: float     ## 新BPM值
-	
+
 	func _init(p_time: float, p_bpm: float) -> void:
 		time = p_time
 		bpm = p_bpm
@@ -25,7 +30,7 @@ class BPMChange:
 class ScrollChange:
 	var time: float    ## 变化发生时间（秒）
 	var scroll: float  ## 新滚动速度
-	
+
 	func _init(p_time: float, p_scroll: float) -> void:
 		time = p_time
 		scroll = p_scroll
@@ -48,6 +53,15 @@ var _current_time: float = 0.0
 ## 音符偏移
 var _offset: float = 0.0
 
+## 缓存的BPM变化索引（优化：避免每次从头搜索）
+var _cached_bpm_index: int = 0
+
+## 缓存的滚动速度变化索引（优化：避免每次从头搜索）
+var _cached_scroll_index: int = 0
+
+## 缓存的每秒像素数（优化：避免重复计算）
+var _cached_pixels_per_second: float = 200.0
+
 
 func _ready() -> void:
 	reset()
@@ -61,6 +75,9 @@ func reset() -> void:
 	_current_scroll = 1.0
 	_current_time = 0.0
 	_offset = 0.0
+	_cached_bpm_index = 0
+	_cached_scroll_index = 0
+	_update_pixels_per_second()
 
 
 ## 设置偏移
@@ -119,99 +136,129 @@ func load_chart_data(course) -> void:
 ## 更新当前时间
 func update_time(time: float) -> void:
 	_current_time = time
-	
+
 	# 更新当前BPM
 	_update_current_bpm()
-	
+
 	# 更新当前滚动速度
 	_update_current_scroll()
 
 
-## 更新当前BPM
+## 更新每秒像素数缓存
+func _update_pixels_per_second() -> void:
+	_cached_pixels_per_second = pixels_per_beat * _current_bpm / 60.0
+
+
+## 更新当前BPM（优化版本 - 使用二分查找）
 func _update_current_bpm() -> void:
 	if _bpm_changes.size() == 0:
 		return
 
-	# 查找当前时间对应的BPM（找到最后一个时间<=当前时间的变化点）
-	var new_bpm = _current_bpm
-	for i in range(_bpm_changes.size()):
-		if _bpm_changes[i].time <= _current_time:
-			new_bpm = _bpm_changes[i].bpm
+	# 使用二分查找找到最后一个时间<=当前时间的变化点
+	var index = _binary_search_bpm_change(_current_time)
+	
+	if index >= 0 and index < _bpm_changes.size():
+		var new_bpm = _bpm_changes[index].bpm
+		
+		# 如果BPM发生变化，更新并发射信号
+		if _current_bpm != new_bpm:
+			_current_bpm = new_bpm
+			_update_pixels_per_second()  # 更新缓存
+			bpm_changed.emit(_current_bpm)
+
+
+## 二分查找BPM变化点
+## 返回最后一个时间<=目标时间的变化点索引
+func _binary_search_bpm_change(target_time: float) -> int:
+	var left = 0
+	var right = _bpm_changes.size() - 1
+	var result = -1
+	
+	while left <= right:
+		var mid = (left + right) / 2
+		if _bpm_changes[mid].time <= target_time:
+			result = mid
+			left = mid + 1
 		else:
-			break  # 后续变化点都在未来，停止搜索
-
-	# 如果BPM发生变化，更新并发射信号
-	if _current_bpm != new_bpm:
-		_current_bpm = new_bpm
-		bpm_changed.emit(_current_bpm)
+			right = mid - 1
+	
+	return result
 
 
-## 更新当前滚动速度
+## 更新当前滚动速度（优化版本 - 使用二分查找）
 func _update_current_scroll() -> void:
 	if _scroll_changes.size() == 0:
 		return
 
-	# 查找当前时间对应的滚动速度（找到最后一个时间<=当前时间的变化点）
-	var new_scroll = _current_scroll
-	for i in range(_scroll_changes.size()):
-		if _scroll_changes[i].time <= _current_time:
-			new_scroll = _scroll_changes[i].scroll
+	# 使用二分查找找到最后一个时间<=当前时间的变化点
+	var index = _binary_search_scroll_change(_current_time)
+	
+	if index >= 0 and index < _scroll_changes.size():
+		var new_scroll = _scroll_changes[index].scroll
+		
+		# 如果滚动速度发生变化，更新并发射信号
+		if _current_scroll != new_scroll:
+			_current_scroll = new_scroll
+			scroll_speed_changed.emit(_current_scroll)
+
+
+## 二分查找滚动速度变化点
+## 返回最后一个时间<=目标时间的变化点索引
+func _binary_search_scroll_change(target_time: float) -> int:
+	var left = 0
+	var right = _scroll_changes.size() - 1
+	var result = -1
+	
+	while left <= right:
+		var mid = (left + right) / 2
+		if _scroll_changes[mid].time <= target_time:
+			result = mid
+			left = mid + 1
 		else:
-			break  # 后续变化点都在未来，停止搜索
-
-	# 如果滚动速度发生变化，更新并发射信号
-	if _current_scroll != new_scroll:
-		_current_scroll = new_scroll
-		scroll_speed_changed.emit(_current_scroll)
+			right = mid - 1
+	
+	return result
 
 
-## 时间转换为位置
+## 时间转换为位置（优化版本 - 使用缓存的每秒像素数）
 ## @param time_diff: 时间差（秒），正数表示未来，负数表示过去
 ## @return: X坐标位置
 func time_to_position(time_diff: float) -> float:
 	# 计算有效滚动速度
 	var effective_speed = base_scroll_speed * _current_scroll
-	
-	# 计算每秒像素数
-	# BPM = 每分钟拍数，每拍 = 60/BPM 秒
-	# 每秒像素数 = pixels_per_beat * BPM / 60
-	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
-	
-	# 计算位置
-	# 判定线位置 + 时间差 * 滚动速度 * 每秒像素数
-	var position = judge_line_x + time_diff * effective_speed * pixels_per_second
-	
+
+	# 使用缓存的每秒像素数
+	var position = judge_line_x + time_diff * effective_speed * _cached_pixels_per_second
+
 	return position
 
 
-## 位置转换为时间
+## 位置转换为时间（优化版本 - 使用缓存的每秒像素数）
 ## @param position: X坐标位置
 ## @return: 时间差（秒）
 func position_to_time(position: float) -> float:
 	var effective_speed = base_scroll_speed * _current_scroll
-	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
-	
-	if effective_speed == 0 or pixels_per_second <= 0:
+
+	if effective_speed == 0 or _cached_pixels_per_second <= 0:
 		return 0.0
-	
+
 	# 允许负滚动速度产生负时间差
-	return (position - judge_line_x) / (effective_speed * pixels_per_second)
+	return (position - judge_line_x) / (effective_speed * _cached_pixels_per_second)
 
 
-## 获取生成提前时间
+## 获取生成提前时间（优化版本 - 使用缓存的每秒像素数）
 ## @return: 音符应该提前多少秒生成
 func get_spawn_ahead_time() -> float:
 	# 假设音符从屏幕右侧生成
 	var spawn_position = 1280.0  ## 屏幕宽度
 	var distance = spawn_position - judge_line_x
-	
+
 	var effective_speed = base_scroll_speed * _current_scroll
-	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
-	
-	if effective_speed <= 0 or pixels_per_second <= 0:
+
+	if effective_speed <= 0 or _cached_pixels_per_second <= 0:
 		return 5.0  ## 默认5秒
-	
-	return distance / (effective_speed * pixels_per_second)
+
+	return distance / (effective_speed * _cached_pixels_per_second)
 
 
 ## 获取当前BPM
@@ -229,16 +276,15 @@ func get_effective_scroll_speed() -> float:
 	return base_scroll_speed * _current_scroll
 
 
-## 计算时间范围内的距离
+## 计算时间范围内的距离（优化版本 - 使用缓存的每秒像素数）
 ## @param start_time: 开始时间
 ## @param end_time: 结束时间
 ## @return: 距离（像素）
 func calculate_distance(start_time: float, end_time: float) -> float:
 	var time_diff = end_time - start_time
 	var effective_speed = base_scroll_speed * _current_scroll
-	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
-	
-	return abs(time_diff) * effective_speed * pixels_per_second
+
+	return abs(time_diff) * effective_speed * _cached_pixels_per_second
 
 
 ## 获取BPM变化点数量

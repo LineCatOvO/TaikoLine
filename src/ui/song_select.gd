@@ -4,9 +4,11 @@ extends Control
 ## 显示歌曲列表，允许选择歌曲和难度
 ## 作者：TaikoLine Team
 ## 日期：2026-03-27
+## 更新：优化场景过渡动画和列表滚动动画
 
 const SongDatabase = preload("res://src/ui/song_database.gd")
 const SongItem = preload("res://src/ui/components/song_item.gd")
+const SceneTransition = preload("res://src/ui/components/scene_transition.gd")
 
 ## 信号
 signal song_selected(song_data: Dictionary, course_type: int)
@@ -393,13 +395,18 @@ func _on_back_pressed() -> void:
 
 ## 切换场景（带过渡动画）
 func _change_scene(scene_path: String) -> void:
-	var tween = create_tween()
-	tween.set_ease(Tween.EASE_IN)
-	tween.set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(self, "modulate:a", 0.0, TRANSITION_DURATION)
+	# 创建场景过渡组件
+	var transition = SceneTransition.new()
+	transition.transition_type = SceneTransition.TransitionType.FADE
+	transition.transition_duration = TRANSITION_DURATION
+	transition.color = Color(0, 0, 0)
+	add_child(transition)
 
-	await tween.finished
-	get_tree().change_scene_to_file(scene_path)
+	# 等待过渡完成
+	transition.change_scene(scene_path)
+
+
+## 播放导航音效
 
 
 ## 播放导航音效
@@ -478,9 +485,34 @@ func _scroll_to_song(index: int) -> void:
 	var scroll_y = item_pos - scroll_height / 2 + item_height / 2
 	scroll_y = clamp(scroll_y, 0, _song_list_container.size.y - scroll_height)
 
-	# 平滑滚动
+	# 平滑滚动（使用更流畅的缓动曲线）
 	var tween = create_tween()
-	tween.tween_property(_song_list_scroll, "scroll_vertical", scroll_y, 0.2)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_QUART)
+	tween.tween_property(_song_list_scroll, "scroll_vertical", scroll_y, 0.25)
+
+	# 高亮当前选中的项目
+	_highlight_song_item(index)
+
+
+## 高亮歌曲列表项
+## 参数 index: 歌曲索引
+func _highlight_song_item(index: int) -> void:
+	# 重置所有项目的高亮状态
+	for i in range(_song_list_container.get_child_count()):
+		var item = _song_list_container.get_child(i)
+		if i == index:
+			# 高亮动画
+			var tween = create_tween()
+			tween.set_ease(Tween.EASE_OUT)
+			tween.set_trans(Tween.TRANS_QUAD)
+			tween.tween_property(item, "modulate", Color(1.2, 1.2, 1.2, 1.0), 0.15)
+		else:
+			# 恢复正常
+			var tween = create_tween()
+			tween.set_ease(Tween.EASE_OUT)
+			tween.set_trans(Tween.TRANS_QUAD)
+			tween.tween_property(item, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.15)
 
 
 ## 确认当前选择
