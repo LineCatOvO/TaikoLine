@@ -1,6 +1,7 @@
 extends Control
 ## 编辑器主场景脚本
 ## 处理菜单操作、工具选择、场景切换
+## 支持高级功能：批量操作、BPM编辑、Go-Go Time编辑等
 
 const EditorController = preload("res://src/editor/editor_controller.gd")
 const EditorData = preload("res://src/editor/editor_data.gd")
@@ -9,6 +10,9 @@ const TimelineView = preload("res://src/editor/timeline_view.gd")
 const PreviewController = preload("res://src/editor/preview_controller.gd")
 const BranchEditor = preload("res://src/editor/branch_editor.gd")
 const Metronome = preload("res://src/editor/metronome.gd")
+const BPMEditor = preload("res://src/editor/bpm_editor.gd")
+const GogoEditor = preload("res://src/editor/gogo_editor.gd")
+const BatchOperations = preload("res://src/editor/batch_operations.gd")
 
 ## 控制器引用
 @onready var controller: EditorController = $EditorController
@@ -91,6 +95,7 @@ func _ready() -> void:
 	_setup_file_dialogs()
 	_setup_metronome()
 	_setup_grid_ui()
+	_setup_advanced_panel()
 	_update_ui()
 
 
@@ -811,10 +816,14 @@ const NOTE_SHORTCUTS: Dictionary = {
 ## 处理快捷键
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
-		# 首先检查音符快捷键（不需要Ctrl修饰）
+		# 首先检查批量操作快捷键
+		if _handle_batch_shortcut(event):
+			return
+
+		# 然后检查音符快捷键（不需要Ctrl修饰）
 		if _handle_note_shortcut(event):
 			return
-		
+
 		# 然后检查其他快捷键
 		match event.keycode:
 			KEY_SPACE:
@@ -840,7 +849,7 @@ func _input(event: InputEvent) -> void:
 				if event.ctrl_pressed:
 					_new_project()
 			KEY_A:
-				if event.ctrl_pressed:
+				if event.ctrl_pressed and not event.shift_pressed:
 					_select_all()
 			KEY_C:
 				if event.ctrl_pressed:
@@ -862,6 +871,9 @@ func _input(event: InputEvent) -> void:
 			KEY_0:
 				if event.ctrl_pressed:
 					_reset_zoom()
+			KEY_F1:
+				# F1: 显示谱面统计
+				_show_chart_statistics()
 			KEY_LEFT:
 				# 左箭头：向后跳转5秒
 				if preview_controller and not event.ctrl_pressed:
@@ -1489,3 +1501,359 @@ func _on_audio_unloaded() -> void:
 func _on_audio_load_failed(error: String) -> void:
 	print("音频加载失败: ", error)
 	# 可以在这里显示错误对话框
+
+
+## ========== 高级功能面板 ==========
+
+## BPM编辑器
+var bpm_editor: BPMEditor = null
+
+## Go-Go Time编辑器
+var gogo_editor: GogoEditor = null
+
+## 高级功能面板容器
+var advanced_panel: TabContainer = null
+
+
+## 设置高级功能面板
+func _setup_advanced_panel() -> void:
+	# 创建标签容器
+	advanced_panel = TabContainer.new()
+	advanced_panel.name = "AdvancedPanel"
+	advanced_panel.custom_minimum_size.x = 250
+
+	# 创建BPM编辑器
+	bpm_editor = BPMEditor.new()
+	bpm_editor.name = "BPM"
+	bpm_editor.set_controller(controller)
+	if controller.batch_operations != null:
+		bpm_editor.set_batch_operations(controller.batch_operations)
+	advanced_panel.add_child(bpm_editor)
+
+	# 创建Go-Go Time编辑器
+	gogo_editor = GogoEditor.new()
+	gogo_editor.name = "Go-Go"
+	gogo_editor.set_controller(controller)
+	if controller.batch_operations != null:
+		gogo_editor.set_batch_operations(controller.batch_operations)
+	advanced_panel.add_child(gogo_editor)
+
+	# 添加到属性面板
+	property_panel.add_child(advanced_panel)
+
+
+## 更新高级功能面板
+func _update_advanced_panel() -> void:
+	if bpm_editor != null:
+		bpm_editor._update_bpm_list()
+	if gogo_editor != null:
+		gogo_editor._update_gogo_list()
+
+
+## ========== 批量操作快捷键 ==========
+
+## 处理批量操作快捷键
+func _handle_batch_shortcut(event: InputEventKey) -> bool:
+	if event.ctrl_pressed and event.shift_pressed:
+		match event.keycode:
+			KEY_A:
+				# Ctrl+Shift+A: 高级全选（弹出选择对话框）
+				_show_advanced_select_dialog()
+				return true
+			KEY_B:
+				# Ctrl+Shift+B: 批量修改音符类型
+				_show_batch_type_dialog()
+				return true
+			KEY_G:
+				# Ctrl+Shift+G: 批量设置Go-Go Time
+				_show_batch_gogo_dialog()
+				return true
+			KEY_T:
+				# Ctrl+Shift+T: 批量设置BPM
+				_show_batch_bpm_dialog()
+				return true
+
+	return false
+
+
+## 显示高级选择对话框
+func _show_advanced_select_dialog() -> void:
+	# 创建选择对话框
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "高级选择"
+	dialog.min_size = Vector2(300, 200)
+
+	var vbox = VBoxContainer.new()
+	dialog.add_child(vbox)
+
+	# 选择类型
+	var type_label = Label.new()
+	type_label.text = "选择类型:"
+	vbox.add_child(type_label)
+
+	var type_option = OptionButton.new()
+	type_option.add_item("小节范围")
+	type_option.add_item("音符类型")
+	type_option.add_item("Go-Go Time区域")
+	type_option.add_item("连打音符")
+	type_option.add_item("大音符")
+	vbox.add_child(type_option)
+
+	# 参数输入
+	var param_container = VBoxContainer.new()
+	vbox.add_child(param_container)
+
+	dialog.confirmed.connect(func():
+		_execute_advanced_select(type_option.selected, param_container)
+		dialog.queue_free()
+	)
+
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+## 执行高级选择
+func _execute_advanced_select(type_index: int, param_container: VBoxContainer) -> void:
+	if controller == null or controller.batch_operations == null:
+		return
+
+	match type_index:
+		0:  # 小节范围
+			# 需要从参数容器获取范围
+			pass
+		1:  # 音符类型
+			# 需要从参数容器获取类型
+			pass
+		2:  # Go-Go Time区域
+			controller.batch_operations.select_notes_in_gogo_region()
+		3:  # 连打音符
+			controller.batch_operations.select_renda_notes()
+		4:  # 大音符
+			controller.batch_operations.select_big_notes()
+
+
+## 显示批量类型修改对话框
+func _show_batch_type_dialog() -> void:
+	if controller == null:
+		return
+
+	var selected = controller.selected_notes
+	if selected.is_empty():
+		return
+
+	# 创建对话框
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "批量修改音符类型"
+	dialog.min_size = Vector2(300, 150)
+
+	var vbox = VBoxContainer.new()
+	dialog.add_child(vbox)
+
+	var info_label = Label.new()
+	info_label.text = "选中 %d 个音符" % selected.size()
+	vbox.add_child(info_label)
+
+	var type_label = Label.new()
+	type_label.text = "新类型:"
+	vbox.add_child(type_label)
+
+	var type_option = OptionButton.new()
+	var note_types = EditorData.get_all_note_types()
+	for note_type in note_types:
+		type_option.add_item(EditorData.get_note_type_name(note_type))
+	vbox.add_child(type_option)
+
+	dialog.confirmed.connect(func():
+		var new_type = note_types[type_option.selected]
+		controller.batch_change_note_type(new_type)
+		dialog.queue_free()
+	)
+
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+## 显示批量Go-Go Time对话框
+func _show_batch_gogo_dialog() -> void:
+	if controller == null:
+		return
+
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "批量设置Go-Go Time"
+	dialog.min_size = Vector2(300, 200)
+
+	var vbox = VBoxContainer.new()
+	dialog.add_child(vbox)
+
+	# 起始小节
+	var start_hbox = HBoxContainer.new()
+	vbox.add_child(start_hbox)
+
+	var start_label = Label.new()
+	start_label.text = "起始小节:"
+	start_label.custom_minimum_size.x = 80
+	start_hbox.add_child(start_label)
+
+	var start_spinbox = SpinBox.new()
+	start_spinbox.min_value = 0
+	start_spinbox.max_value = 999
+	start_hbox.add_child(start_spinbox)
+
+	# 结束小节
+	var end_hbox = HBoxContainer.new()
+	vbox.add_child(end_hbox)
+
+	var end_label = Label.new()
+	end_label.text = "结束小节:"
+	end_label.custom_minimum_size.x = 80
+	end_hbox.add_child(end_label)
+
+	var end_spinbox = SpinBox.new()
+	end_spinbox.min_value = 0
+	end_spinbox.max_value = 999
+	end_hbox.add_child(end_spinbox)
+
+	# 启用/禁用
+	var enable_check = CheckBox.new()
+	enable_check.text = "启用Go-Go Time"
+	enable_check.button_pressed = true
+	vbox.add_child(enable_check)
+
+	dialog.confirmed.connect(func():
+		var start = int(start_spinbox.value)
+		var end = int(end_spinbox.value)
+		var enable = enable_check.button_pressed
+		controller.batch_toggle_gogo(start, end, enable)
+		dialog.queue_free()
+	)
+
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+## 显示批量BPM对话框
+func _show_batch_bpm_dialog() -> void:
+	if controller == null:
+		return
+
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "批量设置BPM"
+	dialog.min_size = Vector2(300, 200)
+
+	var vbox = VBoxContainer.new()
+	dialog.add_child(vbox)
+
+	# 起始小节
+	var start_hbox = HBoxContainer.new()
+	vbox.add_child(start_hbox)
+
+	var start_label = Label.new()
+	start_label.text = "起始小节:"
+	start_label.custom_minimum_size.x = 80
+	start_hbox.add_child(start_label)
+
+	var start_spinbox = SpinBox.new()
+	start_spinbox.min_value = 0
+	start_spinbox.max_value = 999
+	start_hbox.add_child(start_spinbox)
+
+	# 结束小节
+	var end_hbox = HBoxContainer.new()
+	vbox.add_child(end_hbox)
+
+	var end_label = Label.new()
+	end_label.text = "结束小节:"
+	end_label.custom_minimum_size.x = 80
+	end_hbox.add_child(end_label)
+
+	var end_spinbox = SpinBox.new()
+	end_spinbox.min_value = 0
+	end_spinbox.max_value = 999
+	end_hbox.add_child(end_spinbox)
+
+	# BPM值
+	var bpm_hbox = HBoxContainer.new()
+	vbox.add_child(bpm_hbox)
+
+	var bpm_label = Label.new()
+	bpm_label.text = "BPM:"
+	bpm_label.custom_minimum_size.x = 80
+	bpm_hbox.add_child(bpm_label)
+
+	var bpm_spinbox = SpinBox.new()
+	bpm_spinbox.min_value = 1.0
+	bpm_spinbox.max_value = 999.0
+	bpm_spinbox.value = 120.0
+	bpm_hbox.add_child(bpm_spinbox)
+
+	dialog.confirmed.connect(func():
+		var start = int(start_spinbox.value)
+		var end = int(end_spinbox.value)
+		var bpm = bpm_spinbox.value
+		controller.batch_set_bpm(start, end, bpm)
+		dialog.queue_free()
+	)
+
+	dialog.canceled.connect(func(): dialog.queue_free())
+
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+## ========== 统计信息显示 ==========
+
+## 显示谱面统计信息
+func _show_chart_statistics() -> void:
+	if controller == null:
+		return
+
+	var stats = controller.get_chart_statistics()
+
+	var dialog = AcceptDialog.new()
+	dialog.title = "谱面统计"
+	dialog.min_size = Vector2(350, 300)
+
+	var vbox = VBoxContainer.new()
+	dialog.add_child(vbox)
+
+	# 基本信息
+	_add_stat_item(vbox, "总小节数", str(stats.get("total_measures", 0)))
+	_add_stat_item(vbox, "总音符数", str(stats.get("total_notes", 0)))
+	_add_stat_item(vbox, "Go-Go Time小节数", str(stats.get("gogo_measures", 0)))
+	_add_stat_item(vbox, "总时长", "%.2f 秒" % stats.get("duration", 0.0))
+
+	# 分隔线
+	vbox.add_child(HSeparator.new())
+
+	# 音符类型统计
+	var type_label = Label.new()
+	type_label.text = "音符类型分布:"
+	vbox.add_child(type_label)
+
+	var by_type = stats.get("by_type", {})
+	for type_name in by_type.keys():
+		_add_stat_item(vbox, "  " + type_name, str(by_type[type_name]))
+
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+## 添加统计项
+func _add_stat_item(parent: Container, name: String, value: String) -> void:
+	var hbox = HBoxContainer.new()
+	parent.add_child(hbox)
+
+	var name_label = Label.new()
+	name_label.text = name + ":"
+	name_label.custom_minimum_size.x = 120
+	hbox.add_child(name_label)
+
+	var value_label = Label.new()
+	value_label.text = value
+	hbox.add_child(value_label)

@@ -2,11 +2,14 @@ class_name EditorController
 extends Node
 ## 编辑器控制器
 ## 管理谱面数据、音符操作、命令处理
+## 支持撤销/重做、批量操作、分支编辑等高级功能
 
 const EditorData = preload("res://src/editor/editor_data.gd")
 const TJAData = preload("res://src/parser/tja_data.gd")
 const TJAParser = preload("res://src/parser/tja_parser.gd")
 const TJAExporter = preload("res://src/editor/tja_exporter.gd")
+const BatchOperations = preload("res://src/editor/batch_operations.gd")
+const UndoRedoManager = preload("res://src/editor/undo_redo_manager.gd")
 
 ## 信号
 signal note_added(note: EditorData.EditorNote)
@@ -22,6 +25,10 @@ signal project_saved(file_path: String)
 signal branch_changed(new_branch: int)
 signal branch_condition_added(condition: EditorData.EditorBranchCondition)
 signal branch_condition_removed(index: int)
+signal batch_operation_started(description: String)
+signal batch_operation_completed(description: String)
+signal undo_stack_changed(size: int)
+signal redo_stack_changed(size: int)
 
 ## 编辑器状态枚举
 enum EditorState {
@@ -58,9 +65,31 @@ var _clipboard: Array[EditorData.EditorNote] = []
 ## 当前编辑的分支 (0=NORMAL, 1=EXPERT, 2=MASTER)
 var current_branch: int = EditorData.BranchType.NORMAL
 
+## 批量操作管理器
+var batch_operations: BatchOperations = null
+
+## 撤销/重做管理器（增强版）
+var undo_redo_manager: UndoRedoManager = null
+
 
 func _ready() -> void:
+	_setup_managers()
 	_create_new_project()
+
+
+## 设置管理器
+func _setup_managers() -> void:
+	# 创建批量操作管理器
+	batch_operations = BatchOperations.new()
+	batch_operations.set_controller(self)
+	batch_operations.batch_operation_started.connect(_on_batch_operation_started)
+	batch_operations.batch_operation_completed.connect(_on_batch_operation_completed)
+
+	# 创建撤销/重做管理器
+	undo_redo_manager = UndoRedoManager.new()
+	undo_redo_manager.set_controller(self)
+	undo_redo_manager.undo_stack_changed.connect(_on_undo_stack_changed)
+	undo_redo_manager.redo_stack_changed.connect(_on_redo_stack_changed)
 
 
 ## 创建新项目
@@ -990,3 +1019,158 @@ func has_branch() -> bool:
 	if course == null:
 		return false
 	return course.has_branch
+
+
+## ========== 批量操作回调 ==========
+
+## 批量操作开始回调
+func _on_batch_operation_started(description: String) -> void:
+	batch_operation_started.emit(description)
+
+
+## 批量操作完成回调
+func _on_batch_operation_completed(description: String) -> void:
+	batch_operation_completed.emit(description)
+
+
+## 撤销栈变化回调
+func _on_undo_stack_changed(size: int) -> void:
+	undo_stack_changed.emit(size)
+
+
+## 重做栈变化回调
+func _on_redo_stack_changed(size: int) -> void:
+	redo_stack_changed.emit(size)
+
+
+## ========== 高级功能便捷方法 ==========
+
+## 批量修改选中音符类型
+func batch_change_note_type(new_type: EditorData.NoteType) -> bool:
+	if batch_operations == null:
+		return false
+	return batch_operations.batch_change_note_type(new_type)
+
+
+## 批量移动选中音符
+func batch_move_notes(measure_offset: int, position_offset: float) -> bool:
+	if batch_operations == null:
+		return false
+	return batch_operations.batch_move_notes(measure_offset, position_offset)
+
+
+## 批量删除选中音符
+func batch_delete_notes() -> bool:
+	if batch_operations == null:
+		return false
+	return batch_operations.batch_delete_notes()
+
+
+## 批量设置BPM
+func batch_set_bpm(start_measure: int, end_measure: int, bpm: float) -> bool:
+	if batch_operations == null:
+		return false
+	return batch_operations.batch_set_measure_bpm(start_measure, end_measure, bpm)
+
+
+## 批量设置滚动速度
+func batch_set_scroll(start_measure: int, end_measure: int, scroll: float) -> bool:
+	if batch_operations == null:
+		return false
+	return batch_operations.batch_set_measure_scroll(start_measure, end_measure, scroll)
+
+
+## 批量切换Go-Go Time
+func batch_toggle_gogo(start_measure: int, end_measure: int, enable: bool) -> bool:
+	if batch_operations == null:
+		return false
+	return batch_operations.batch_toggle_gogo(start_measure, end_measure, enable)
+
+
+## 选择小节范围内的音符
+func select_notes_in_range(start_measure: int, end_measure: int) -> void:
+	if batch_operations == null:
+		return
+	batch_operations.select_notes_in_measure_range(start_measure, end_measure)
+
+
+## 选择指定类型的音符
+func select_notes_by_type(note_type: EditorData.NoteType) -> void:
+	if batch_operations == null:
+		return
+	batch_operations.select_notes_by_type(note_type)
+
+
+## 反选
+func invert_selection() -> void:
+	if batch_operations == null:
+		return
+	batch_operations.invert_selection()
+
+
+## 获取选中音符统计
+func get_selection_statistics() -> Dictionary:
+	if batch_operations == null:
+		return {}
+	return batch_operations.get_selection_statistics()
+
+
+## 获取谱面统计
+func get_chart_statistics() -> Dictionary:
+	if batch_operations == null:
+		return {}
+	return batch_operations.get_chart_statistics()
+
+
+## 获取撤销历史
+func get_undo_history() -> Array:
+	if undo_redo_manager == null:
+		return []
+	return undo_redo_manager.get_undo_history()
+
+
+## 获取重做历史
+func get_redo_history() -> Array:
+	if undo_redo_manager == null:
+		return []
+	return undo_redo_manager.get_redo_history()
+
+
+## 获取撤销描述
+func get_undo_description() -> String:
+	if undo_redo_manager == null:
+		return ""
+	return undo_redo_manager.get_undo_description()
+
+
+## 获取重做描述
+func get_redo_description() -> String:
+	if undo_redo_manager == null:
+		return ""
+	return undo_redo_manager.get_redo_description()
+
+
+## 开始批量操作组
+func begin_batch_group(description: String = "") -> void:
+	if undo_redo_manager != null:
+		undo_redo_manager.begin_group(description)
+
+
+## 结束批量操作组
+func end_batch_group() -> void:
+	if undo_redo_manager != null:
+		undo_redo_manager.end_group()
+
+
+## 取消批量操作组
+func cancel_batch_group() -> void:
+	if undo_redo_manager != null:
+		undo_redo_manager.cancel_group()
+
+
+## 清空撤销/重做历史
+func clear_undo_redo_history() -> void:
+	_undo_stack.clear()
+	_redo_stack.clear()
+	if undo_redo_manager != null:
+		undo_redo_manager.clear()
