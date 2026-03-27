@@ -15,6 +15,8 @@ signal game_ended(result: Dictionary)
 signal game_paused
 signal game_resumed
 signal time_updated(current_time: float)
+signal score_updated(score: int)  ## 分数更新信号
+signal combo_updated(combo: int)  ## 连击更新信号
 signal branch_changed(new_branch: int)  ## 分支切换信号
 signal gogo_started  ## Go-Go Time开始信号
 signal gogo_ended    ## Go-Go Time结束信号
@@ -507,12 +509,16 @@ func _on_note_missed(note) -> void:
 func _on_score_updated(score: int) -> void:
 	# 更新全局状态
 	GameState.current_score = score
+	# 转发信号
+	score_updated.emit(score)
 
 
 ## 连击更新回调
 func _on_combo_updated(combo: int) -> void:
 	# 更新全局状态
 	GameState.current_combo = combo
+	# 转发信号
+	combo_updated.emit(combo)
 
 
 ## 判定结果回调

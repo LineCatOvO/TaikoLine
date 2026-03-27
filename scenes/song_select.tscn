@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://song_select"]
+[gd_scene load_steps=4 format=3 uid="uid://song_select"]
 
 [ext_resource type="Script" path="res://src/ui/song_select.gd" id="1_song"]
+[ext_resource type="Theme" uid="uid://main_menu_theme" path="res://resources/ui/themes/main_menu_theme.tres" id="2_theme"]
+[ext_resource type="PackedScene" uid="uid://main_background" path="res://scenes/components/main_background.tscn" id="3_background"]
 
 [node name="SongSelect" type="Control"]
 layout_mode = 3
@@ -9,4 +11,259 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
 script = ExtResource("1_song")
+
+[node name="Background" parent="." instance=ExtResource("3_background")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -80.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="LeftPanel" type="VBoxContainer" parent="MainContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="HeaderPanel" type="PanelContainer" parent="MainContainer/LeftPanel"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+
+[node name="HeaderHBox" type="HBoxContainer" parent="MainContainer/LeftPanel/HeaderPanel"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MainContainer/LeftPanel/HeaderPanel/HeaderHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Song Select"
+
+[node name="Spacer" type="Control" parent="MainContainer/LeftPanel/HeaderPanel/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SongCountLabel" type="Label" parent="MainContainer/LeftPanel/HeaderPanel/HeaderHBox"]
+layout_mode = 2
+text = "Songs: 0"
+
+[node name="SearchPanel" type="PanelContainer" parent="MainContainer/LeftPanel"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+
+[node name="SearchHBox" type="HBoxContainer" parent="MainContainer/LeftPanel/SearchPanel"]
+layout_mode = 2
+
+[node name="SearchLabel" type="Label" parent="MainContainer/LeftPanel/SearchPanel/SearchHBox"]
+layout_mode = 2
+text = "Search:"
+
+[node name="SearchInput" type="LineEdit" parent="MainContainer/LeftPanel/SearchPanel/SearchHBox"]
+custom_minimum_size = Vector2(300, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Type to search..."
+
+[node name="SongListScroll" type="ScrollContainer" parent="MainContainer/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SongListContainer" type="VBoxContainer" parent="MainContainer/LeftPanel/SongListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="RightPanel" type="VBoxContainer" parent="MainContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="SongInfoPanel" type="PanelContainer" parent="MainContainer/RightPanel"]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SongInfoVBox" type="VBoxContainer" parent="MainContainer/RightPanel/SongInfoPanel"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="TitleSection" type="VBoxContainer" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="TitleLabel" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/TitleSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Select a Song"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/TitleSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = ""
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox"]
+layout_mode = 2
+
+[node name="StatsSection" type="GridContainer" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="BPMLabel" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/StatsSection"]
+layout_mode = 2
+text = "BPM:"
+
+[node name="BPMValue" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/StatsSection"]
+layout_mode = 2
+text = "---"
+
+[node name="GenreLabel" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/StatsSection"]
+layout_mode = 2
+text = "Genre:"
+
+[node name="GenreValue" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/StatsSection"]
+layout_mode = 2
+text = "---"
+
+[node name="MakerLabel" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/StatsSection"]
+layout_mode = 2
+text = "Maker:"
+
+[node name="MakerValue" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/StatsSection"]
+layout_mode = 2
+text = "---"
+
+[node name="HSeparator2" type="HSeparator" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox"]
+layout_mode = 2
+
+[node name="DifficultySection" type="VBoxContainer" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DifficultyLabel" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection"]
+layout_mode = 2
+text = "Select Difficulty:"
+horizontal_alignment = 1
+
+[node name="DifficultyButtons" type="HBoxContainer" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 10
+
+[node name="EasyBtn" type="Button" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection/DifficultyButtons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 2
+toggle_mode = true
+text = "Easy"
+
+[node name="NormalBtn" type="Button" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection/DifficultyButtons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 2
+toggle_mode = true
+text = "Normal"
+
+[node name="HardBtn" type="Button" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection/DifficultyButtons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 2
+toggle_mode = true
+text = "Hard"
+
+[node name="OniBtn" type="Button" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection/DifficultyButtons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "Oni"
+
+[node name="LevelDisplay" type="Label" parent="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Level: ---"
+horizontal_alignment = 1
+
+[node name="ActionPanel" type="PanelContainer" parent="MainContainer/RightPanel"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+
+[node name="ActionHBox" type="HBoxContainer" parent="MainContainer/RightPanel/ActionPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 15
+
+[node name="PreviewBtn" type="Button" parent="MainContainer/RightPanel/ActionPanel/ActionHBox"]
+custom_minimum_size = Vector2(120, 50)
+layout_mode = 2
+text = "Preview"
+
+[node name="StartBtn" type="Button" parent="MainContainer/RightPanel/ActionPanel/ActionHBox"]
+custom_minimum_size = Vector2(150, 50)
+layout_mode = 2
+disabled = true
+text = "Start Game"
+
+[node name="BottomBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="BottomHBox" type="HBoxContainer" parent="BottomBar"]
+layout_mode = 2
+theme_override_constants/separation = 30
+
+[node name="BackBtn" type="Button" parent="BottomBar/BottomHBox"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "Back"
+
+[node name="Spacer" type="Control" parent="BottomBar/BottomHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HintLabel" type="Label" parent="BottomBar/BottomHBox"]
+layout_mode = 2
+text = "Enter: Confirm | Up/Down: Navigate | Space: Preview"
+
+[node name="Spacer2" type="Control" parent="BottomBar/BottomHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PreviewPlayer" type="AudioStreamPlayer" parent="."]
+volume_db = -5.0
+
+[node name="NavigateSound" type="AudioStreamPlayer" parent="."]
+volume_db = -15.0
+
+[node name="ConfirmSound" type="AudioStreamPlayer" parent="."]
+volume_db = -10.0
+
+[connection signal="text_changed" from="MainContainer/LeftPanel/SearchPanel/SearchHBox/SearchInput" to="." method="_on_search_text_changed"]
+[connection signal="pressed" from="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection/DifficultyButtons/EasyBtn" to="." method="_on_difficulty_pressed" binds= [0]]
+[connection signal="pressed" from="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection/DifficultyButtons/NormalBtn" to="." method="_on_difficulty_pressed" binds= [1]]
+[connection signal="pressed" from="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection/DifficultyButtons/HardBtn" to="." method="_on_difficulty_pressed" binds= [2]]
+[connection signal="pressed" from="MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/DifficultySection/DifficultyButtons/OniBtn" to="." method="_on_difficulty_pressed" binds= [3]]
+[connection signal="pressed" from="MainContainer/RightPanel/ActionPanel/ActionHBox/PreviewBtn" to="." method="_on_preview_pressed"]
+[connection signal="pressed" from="MainContainer/RightPanel/ActionPanel/ActionHBox/StartBtn" to="." method="_on_start_pressed"]
+[connection signal="pressed" from="BottomBar/BottomHBox/BackBtn" to="." method="_on_back_pressed"]

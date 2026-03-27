@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://gameplay"]
+[gd_scene load_steps=3 format=3 uid="uid://gameplay"]
 
 [ext_resource type="Script" path="res://src/ui/gameplay.gd" id="1_game"]
+[ext_resource type="Script" path="res://scenes/gameplay.gd" id="2_scene"]
 
 [node name="Gameplay" type="Control"]
 layout_mode = 3
@@ -10,3 +11,260 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_game")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.067, 0.067, 0.18, 1)
+
+[node name="GogoOverlay" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 0.42, 0, 0)
+mouse_filter = 2
+
+[node name="NoteArea" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="NoteAreaBackground" type="ColorRect" parent="NoteArea"]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = -100.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.086, 0.13, 0.24, 0.8)
+
+[node name="JudgeLine" type="ColorRect" parent="NoteArea"]
+layout_mode = 1
+anchors_preset = 4
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -2.0
+offset_top = 80.0
+offset_right = 2.0
+offset_bottom = 380.0
+grow_horizontal = 2
+color = Color(1, 0.84, 0, 0.8)
+
+[node name="JudgeLineGlow" type="ColorRect" parent="NoteArea/JudgeLine"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -4.0
+offset_top = -4.0
+offset_right = 4.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 0.84, 0, 0.3)
+
+[node name="TopBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 50.0
+grow_horizontal = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+
+[node name="PauseButton" type="Button" parent="TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(40, 30)
+layout_mode = 2
+text = "||"
+
+[node name="SongTitleLabel" type="Label" parent="TopBar/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Now Playing: ---"
+horizontal_alignment = 1
+
+[node name="ScoreContainer" type="HBoxContainer" parent="TopBar/HBoxContainer"]
+layout_mode = 2
+
+[node name="ScorePrefix" type="Label" parent="TopBar/HBoxContainer/ScoreContainer"]
+layout_mode = 2
+text = "SCORE: "
+horizontal_alignment = 2
+
+[node name="ScoreLabel" type="Label" parent="TopBar/HBoxContainer/ScoreContainer"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+
+[node name="ComboDisplay" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 4
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -60.0
+offset_top = 400.0
+offset_right = 60.0
+offset_bottom = 480.0
+grow_horizontal = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ComboDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="ComboLabel" type="Label" parent="ComboDisplay/VBoxContainer"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+
+[node name="ComboTextLabel" type="Label" parent="ComboDisplay/VBoxContainer"]
+layout_mode = 2
+text = "COMBO"
+horizontal_alignment = 1
+
+[node name="JudgeDisplay" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 4
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -50.0
+offset_top = 200.0
+offset_right = 50.0
+offset_bottom = 250.0
+grow_horizontal = 2
+
+[node name="JudgeLabel" type="Label" parent="JudgeDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BranchLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 10.0
+offset_top = 60.0
+offset_right = 110.0
+offset_bottom = 90.0
+text = ""
+
+[node name="LyricsDisplay" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -120.0
+offset_right = 200.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="LyricsBackground" type="ColorRect" parent="LyricsDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.5)
+mouse_filter = 2
+
+[node name="LyricsLabel" type="Label" parent="LyricsDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BottomBar"]
+layout_mode = 2
+
+[node name="SoulGaugeContainer" type="Control" parent="BottomBar/VBoxContainer"]
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+
+[node name="SoulGaugeBackground" type="ColorRect" parent="BottomBar/VBoxContainer/SoulGaugeContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.2, 0.2, 0.2)
+
+[node name="SoulGaugeFill" type="ColorRect" parent="BottomBar/VBoxContainer/SoulGaugeContainer"]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 0.0
+grow_vertical = 2
+color = Color(0.3, 0.6, 1)
+
+[node name="SoulGaugeThreshold" type="ColorRect" parent="BottomBar/VBoxContainer/SoulGaugeContainer"]
+layout_mode = 1
+offset_left = 800.0
+offset_top = -2.0
+offset_right = 802.0
+offset_bottom = 27.0
+color = Color(1, 1, 1)
+
+[node name="SoulGaugeLabel" type="Label" parent="BottomBar/VBoxContainer/SoulGaugeContainer"]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -12.0
+offset_bottom = 12.0
+grow_vertical = 2
+text = "0%"
+horizontal_alignment = 1
+
+[node name="ProgressBar" type="ProgressBar" parent="BottomBar/VBoxContainer"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="SceneScript" type="Node" parent="."]
+script = ExtResource("2_scene")

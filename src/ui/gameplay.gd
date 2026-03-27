@@ -2,6 +2,14 @@ class_name GameplayUI
 extends Control
 ## 游戏界面
 ## 显示游戏过程中的所有UI元素
+## 
+## 设计参考：太鼓达人虹版（Taiko no Tatsujin Nijiiro）
+## - 音符轨道：中央横向轨道，带渐变效果
+## - 判定线：轨道右侧垂直判定线，带发光
+## - 分数显示：左上角，带动画
+## - 连击显示：中央下方，大字体
+## - 魂槽：顶部进度条，带阈值标记
+## - 分支指示：当前分支类型显示
 
 const TJAData = preload("res://src/parser/tja_data.gd")
 const GameController = preload("res://src/game/game_controller.gd")
@@ -15,213 +23,127 @@ const LyricsDisplay = preload("res://src/ui/components/lyrics_display.gd")
 signal game_finished(result: Dictionary)
 signal pause_requested
 
-## 判定线X坐标
-const JUDGE_LINE_X: float = 200.0
+## 判定线X坐标（相对于屏幕中心）
+const JUDGE_LINE_OFFSET: float = 200.0
 
-## UI节点引用
-var _note_area: Control
-var _judge_line: ColorRect
-var _judge_display: JudgeDisplay
-var _combo_display: ComboDisplay
-var _soul_gauge: SoulGauge
-var _score_display: ScoreDisplay
-var _pause_button: Button
-var _song_title_label: Label
-var _progress_bar: ProgressBar
+## UI节点引用 - 场景中的节点
+@onready var _background: ColorRect = $Background
+@onready var _gogo_overlay: ColorRect = $GogoOverlay
+@onready var _note_area: Control = $NoteArea
+@onready var _note_area_background: ColorRect = $NoteArea/NoteAreaBackground
+@onready var _judge_line: ColorRect = $NoteArea/JudgeLine
+@onready var _judge_line_glow: ColorRect = $NoteArea/JudgeLine/JudgeLineGlow
+@onready var _top_bar: PanelContainer = $TopBar
+@onready var _pause_button: Button = $TopBar/HBoxContainer/PauseButton
+@onready var _song_title_label: Label = $TopBar/HBoxContainer/SongTitleLabel
+@onready var _score_label: Label = $TopBar/HBoxContainer/ScoreContainer/ScoreLabel
+@onready var _combo_display: Control = $ComboDisplay
+@onready var _combo_label: Label = $ComboDisplay/VBoxContainer/ComboLabel
+@onready var _combo_text_label: Label = $ComboDisplay/VBoxContainer/ComboTextLabel
+@onready var _judge_display: Control = $JudgeDisplay
+@onready var _judge_label: Label = $JudgeDisplay/JudgeLabel
+@onready var _branch_label: Label = $BranchLabel
+@onready var _lyrics_display: Control = $LyricsDisplay
+@onready var _lyrics_label: Label = $LyricsDisplay/LyricsLabel
+@onready var _bottom_bar: PanelContainer = $BottomBar
+@onready var _soul_gauge_container: Control = $BottomBar/VBoxContainer/SoulGaugeContainer
+@onready var _soul_gauge_background: ColorRect = $BottomBar/VBoxContainer/SoulGaugeContainer/SoulGaugeBackground
+@onready var _soul_gauge_fill: ColorRect = $BottomBar/VBoxContainer/SoulGaugeContainer/SoulGaugeFill
+@onready var _soul_gauge_threshold: ColorRect = $BottomBar/VBoxContainer/SoulGaugeContainer/SoulGaugeThreshold
+@onready var _soul_gauge_label: Label = $BottomBar/VBoxContainer/SoulGaugeContainer/SoulGaugeLabel
+@onready var _progress_bar: ProgressBar = $BottomBar/VBoxContainer/ProgressBar
 
 ## Go-Go Time视觉效果
-var _gogo_overlay: ColorRect
-var _gogo_particles: GPUParticles2D
 var _is_gogo_active: bool = false
 
 ## 分支显示
-var _branch_label: Label
 var _current_branch: int = TJAData.BranchType.NORMAL
 
-## 歌词显示
-var _lyrics_display: LyricsDisplay
+## 歌词显示组件
+var _lyrics_component: LyricsDisplay
 
 ## 游戏控制器
 var _game_controller: GameController
 
-## 音符场景
-var _note_scene: PackedScene
-
 ## 活动音符列表
 var _active_notes: Array[Node] = []
 
+## 分数动画
+var _current_score: int = 0
+var _display_score: int = 0
+var _score_tween: Tween
+
+## 连击动画
+var _current_combo: int = 0
+var _combo_tween: Tween
+
+## 魂槽动画
+var _current_soul: float = 0.0
+var _soul_tween: Tween
+
+## 判定显示动画
+var _judge_tween: Tween
+
 
 func _ready() -> void:
-	_setup_ui()
+	_setup_ui_style()
 	_setup_game_controller()
 	_connect_signals()
+	_setup_threshold_line()
 
 
-## 设置UI布局
-func _setup_ui() -> void:
-	# 设置全屏
-	anchors_preset = Control.PRESET_FULL_RECT
-	offset_right = 0
-	offset_bottom = 0
-
-	# 创建主容器
-	var main_vbox = VBoxContainer.new()
-	add_child(main_vbox)
-	main_vbox.anchors_preset = Control.PRESET_FULL_RECT
-	main_vbox.offset_right = 0
-	main_vbox.offset_bottom = 0
-
-	# 顶部信息栏
-	_setup_top_bar(main_vbox)
-
-	# 中间游戏区域
-	var game_area = Control.new()
-	game_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main_vbox.add_child(game_area)
-
-	# Go-Go Time背景覆盖层
-	_setup_gogo_overlay(game_area)
-
-	# 音符显示区域
-	_setup_note_area(game_area)
-
-	# 判定线
-	_setup_judge_line(game_area)
-
-	# 判定显示
-	_setup_judge_display(game_area)
-
-	# 连击显示
-	_setup_combo_display(game_area)
-
-	# 分支显示
-	_setup_branch_display(game_area)
-
-	# 歌词显示
-	_setup_lyrics_display(game_area)
-
-	# 底部状态栏
-	_setup_bottom_bar(main_vbox)
-
-
-## 设置顶部信息栏
-func _setup_top_bar(parent: Control) -> void:
-	var top_bar = PanelContainer.new()
-	top_bar.custom_minimum_size = Vector2(0, 50)
-	parent.add_child(top_bar)
+## 设置UI样式
+func _setup_ui_style() -> void:
+	# 设置背景颜色（从皮肤管理器获取）
+	var bg_color := SkinManager.get_background_color()
+	_background.color = bg_color
 	
-	var hbox = HBoxContainer.new()
-	top_bar.add_child(hbox)
+	# 设置音符区域背景颜色
+	var note_area_color := SkinManager.get_note_area_color()
+	_note_area_background.color = Color(note_area_color.r, note_area_color.g, note_area_color.b, 0.8)
 	
-	# 暂停按钮
-	_pause_button = Button.new()
-	_pause_button.text = "||"
-	_pause_button.custom_minimum_size = Vector2(40, 30)
-	_pause_button.pressed.connect(_on_pause_pressed)
-	hbox.add_child(_pause_button)
-	
-	# 歌曲标题
-	_song_title_label = Label.new()
-	_song_title_label.text = "Now Playing: ---"
-	_song_title_label.add_theme_font_size_override("font_size", 18)
-	_song_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(_song_title_label)
-	
-	# 分数显示
-	_score_display = ScoreDisplay.new()
-	hbox.add_child(_score_display)
-
-
-## 设置音符显示区域
-func _setup_note_area(parent: Control) -> void:
-	_note_area = Control.new()
-	_note_area.name = "NoteArea"
-	_note_area.anchors_preset = Control.PRESET_FULL_RECT
-	parent.add_child(_note_area)
-
-
-## 设置Go-Go Time背景覆盖层
-func _setup_gogo_overlay(parent: Control) -> void:
-	# 创建背景覆盖层
-	_gogo_overlay = ColorRect.new()
-	_gogo_overlay.name = "GogoOverlay"
-	# 从SkinManager获取Go-Go覆盖层颜色
-	var gogo_color := SkinManager.get_gogo_overlay_color()
-	_gogo_overlay.color = Color(gogo_color.r, gogo_color.g, gogo_color.b, 0.0)  # 初始透明
-	_gogo_overlay.anchors_preset = Control.PRESET_FULL_RECT
-	_gogo_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(_gogo_overlay)
-
-
-## 设置分支显示
-func _setup_branch_display(parent: Control) -> void:
-	_branch_label = Label.new()
-	_branch_label.name = "BranchLabel"
-	_branch_label.text = ""
-	_branch_label.add_theme_font_size_override("font_size", 16)
-	_branch_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
-	_branch_label.position = Vector2(10, 80)
-	_branch_label.custom_minimum_size = Vector2(100, 30)
-	parent.add_child(_branch_label)
-
-
-## 设置歌词显示
-func _setup_lyrics_display(parent: Control) -> void:
-	_lyrics_display = LyricsDisplay.new()
-	_lyrics_display.name = "LyricsDisplay"
-	_lyrics_display.position = Vector2(200, 400)
-	_lyrics_display.custom_minimum_size = Vector2(400, 60)
-	parent.add_child(_lyrics_display)
-
-
-## 设置判定线
-func _setup_judge_line(parent: Control) -> void:
-	_judge_line = ColorRect.new()
-	# 从SkinManager获取判定线颜色和高度
+	# 设置判定线颜色
 	var judge_line_color := SkinManager.get_judge_line_color()
-	var judge_line_height := SkinManager.get_judge_line_height()
 	_judge_line.color = Color(judge_line_color.r, judge_line_color.g, judge_line_color.b, 0.8)
-	_judge_line.custom_minimum_size = Vector2(judge_line_height, 300)
-	_judge_line.position = Vector2(JUDGE_LINE_X, 100)
-	parent.add_child(_judge_line)
-
-
-## 设置判定显示
-func _setup_judge_display(parent: Control) -> void:
-	_judge_display = JudgeDisplay.new()
-	_judge_display.position = Vector2(JUDGE_LINE_X - 50, 200)
-	_judge_display.custom_minimum_size = Vector2(100, 50)
-	parent.add_child(_judge_display)
-
-
-## 设置连击显示
-func _setup_combo_display(parent: Control) -> void:
-	_combo_display = ComboDisplay.new()
-	_combo_display.position = Vector2(50, 150)
-	_combo_display.custom_minimum_size = Vector2(100, 80)
-	parent.add_child(_combo_display)
-
-
-## 设置底部状态栏
-func _setup_bottom_bar(parent: Control) -> void:
-	var bottom_bar = PanelContainer.new()
-	bottom_bar.custom_minimum_size = Vector2(0, 60)
-	parent.add_child(bottom_bar)
+	_judge_line_glow.color = Color(judge_line_color.r, judge_line_color.g, judge_line_color.b, 0.3)
 	
-	var vbox = VBoxContainer.new()
-	bottom_bar.add_child(vbox)
+	# 设置分数标签样式
+	_score_label.add_theme_font_size_override("font_size", 28)
+	_score_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.0))  # 金色
 	
-	# 魂槽
-	_soul_gauge = SoulGauge.new()
-	_soul_gauge.custom_minimum_size = Vector2(0, 25)
-	vbox.add_child(_soul_gauge)
+	# 设置连击标签样式
+	_combo_label.add_theme_font_size_override("font_size", 48)
+	_combo_label.add_theme_color_override("font_color", Color.WHITE)
+	_combo_text_label.add_theme_font_size_override("font_size", 16)
+	_combo_text_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 	
-	# 进度条
-	_progress_bar = ProgressBar.new()
-	_progress_bar.custom_minimum_size = Vector2(0, 20)
-	_progress_bar.max_value = 100.0
-	_progress_bar.value = 0.0
-	vbox.add_child(_progress_bar)
+	# 设置判定标签样式
+	_judge_label.add_theme_font_size_override("font_size", 32)
+	_judge_label.modulate.a = 0.0  # 初始隐藏
+	
+	# 设置分支标签样式
+	_branch_label.add_theme_font_size_override("font_size", 16)
+	
+	# 设置歌词标签样式
+	_lyrics_label.add_theme_font_size_override("font_size", 24)
+	_lyrics_label.add_theme_color_override("font_color", Color.WHITE)
+	
+	# 设置魂槽标签样式
+	_soul_gauge_label.add_theme_font_size_override("font_size", 14)
+	_soul_gauge_label.add_theme_color_override("font_color", Color.WHITE)
+	
+	# 初始隐藏连击显示
+	_combo_display.visible = false
+
+
+## 设置阈值线位置
+func _setup_threshold_line() -> void:
+	# 阈值位置为80%（清除阈值）
+	var threshold_ratio = 0.8
+	# 等待一帧让布局完成
+	await get_tree().process_frame
+	var width = _soul_gauge_container.size.x
+	_soul_gauge_threshold.position.x = width * threshold_ratio - 1
 
 
 ## 设置游戏控制器
@@ -234,19 +156,19 @@ func _setup_game_controller() -> void:
 	_game_controller.score_updated.connect(_on_score_updated)
 	_game_controller.combo_updated.connect(_on_combo_updated)
 	_game_controller.time_updated.connect(_on_time_updated)
-	
+
 	# 连接Go-Go Time信号
 	_game_controller.gogo_started.connect(_on_gogo_started)
 	_game_controller.gogo_ended.connect(_on_gogo_ended)
-	
+
 	# 连接分支切换信号
 	_game_controller.branch_changed.connect(_on_branch_changed)
 
 
 ## 连接信号
 func _connect_signals() -> void:
-	# 魂槽信号
-	_soul_gauge.soul_threshold_reached.connect(_on_soul_threshold_reached)
+	# 暂停按钮
+	_pause_button.pressed.connect(_on_pause_pressed)
 	
 	# 皮肤切换信号
 	SkinManager.skin_changed.connect(_on_skin_changed)
@@ -263,7 +185,7 @@ func start_game(song_path: String, course_type: int = TJAData.CourseType.ONI) ->
 	var song = _game_controller.current_song
 	if song:
 		_song_title_label.text = "Now Playing: " + song.title
-		
+
 		# 加载歌词文件
 		_load_lyrics(song)
 
@@ -276,62 +198,91 @@ func start_game(song_path: String, course_type: int = TJAData.CourseType.ONI) ->
 
 ## 加载歌词文件
 func _load_lyrics(song: TJAData.TJASong) -> void:
-	_lyrics_display.clear()
-	
+	_lyrics_label.text = ""
+
 	if song.lyrics.is_empty():
 		return
-	
+
 	# 构建歌词文件路径
 	var lyrics_path = song.get_base_dir() + "/" + song.lyrics
-	
+
 	# 检查文件是否存在
 	if not FileAccess.file_exists(lyrics_path):
 		push_warning("歌词文件不存在: " + lyrics_path)
 		return
+
+	# 创建歌词显示组件
+	if _lyrics_component == null:
+		_lyrics_component = LyricsDisplay.new()
 	
 	# 加载歌词
-	if _lyrics_display.load_vtt_file(lyrics_path):
+	if _lyrics_component.load_vtt_file(lyrics_path):
 		print("歌词加载成功: " + lyrics_path)
 
 
 ## 重置UI
 func _reset_ui() -> void:
-	_score_display.reset()
-	_combo_display.reset()
-	_soul_gauge.reset()
+	# 重置分数
+	_current_score = 0
+	_display_score = 0
+	_score_label.text = "0"
+	
+	# 重置连击
+	_current_combo = 0
+	_combo_label.text = "0"
+	_combo_display.visible = false
+	
+	# 重置魂槽
+	_current_soul = 0.0
+	_soul_gauge_fill.size.x = 0
+	_soul_gauge_fill.color = Color(0.3, 0.6, 1.0)
+	_soul_gauge_label.text = "0%"
+	
+	# 重置进度条
 	_progress_bar.value = 0.0
-	_lyrics_display.clear()
+	
+	# 重置歌词
+	_lyrics_label.text = ""
+	
+	# 重置分支
 	_branch_label.text = ""
 	_current_branch = TJAData.BranchType.NORMAL
+	
+	# 重置判定显示
+	_judge_label.modulate.a = 0.0
 
 	# 清除活动音符
 	for note in _active_notes:
 		note.queue_free()
 	_active_notes.clear()
+	
+	# 重置Go-Go状态
+	_is_gogo_active = false
+	_gogo_overlay.color.a = 0.0
 
 
 ## 处理输入
 func _input(event: InputEvent) -> void:
 	if _game_controller.current_state != GameController.PlayState.PLAYING:
 		return
-	
-	# 处理鼓面输入（红音符）
-	if event.is_action_pressed("don"):
+
+	# 处理鼓面输入（红音符）- 支持左右两侧
+	if event.is_action_pressed("don_left") or event.is_action_pressed("don_right"):
 		_handle_drum_input("don")
-	
-	# 处理鼓边输入（蓝音符）
-	if event.is_action_pressed("ka"):
+
+	# 处理鼓边输入（蓝音符）- 支持左右两侧
+	if event.is_action_pressed("ka_left") or event.is_action_pressed("ka_right"):
 		_handle_drum_input("ka")
-	
+
 	# 处理暂停
-	if event.is_action_pressed("pause"):
+	if event.is_action_pressed("ui_cancel"):
 		_on_pause_pressed()
 
 
 ## 处理鼓输入
 func _handle_drum_input(input_type: String) -> void:
 	_game_controller.handle_input(input_type)
-	
+
 	# 播放音效
 	if input_type == "don":
 		AudioManager.play_don()
@@ -357,29 +308,29 @@ func _show_pause_menu() -> void:
 	pause_menu.anchors_preset = Control.PRESET_CENTER
 	pause_menu.custom_minimum_size = Vector2(300, 200)
 	add_child(pause_menu)
-	
+
 	var vbox = VBoxContainer.new()
 	pause_menu.add_child(vbox)
-	
+
 	# 标题
 	var title = Label.new()
 	title.text = "PAUSED"
 	title.add_theme_font_size_override("font_size", 24)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
-	
+
 	# 继续按钮
 	var resume_btn = Button.new()
 	resume_btn.text = "Resume"
 	resume_btn.pressed.connect(_on_pause_pressed)
 	vbox.add_child(resume_btn)
-	
+
 	# 重试按钮
 	var retry_btn = Button.new()
 	retry_btn.text = "Retry"
 	retry_btn.pressed.connect(_on_retry_pressed)
 	vbox.add_child(retry_btn)
-	
+
 	# 退出按钮
 	var exit_btn = Button.new()
 	exit_btn.text = "Exit"
@@ -419,29 +370,99 @@ func _on_game_ended(result: Dictionary) -> void:
 		"可": result.good_count,
 		"不可": result.miss_count
 	}
-	
+
 	# 发送信号
 	game_finished.emit(result)
-	
+
 	# 切换到结果场景
 	get_tree().change_scene_to_file("res://scenes/result.tscn")
 
 
 ## 分数更新回调
 func _on_score_updated(score: int) -> void:
-	_score_display.update_score(score)
+	_animate_score(_current_score, score)
+	_current_score = score
+
+
+## 动画显示分数变化
+func _animate_score(from: int, to: int) -> void:
+	if _score_tween:
+		_score_tween.kill()
+
+	# 使用tween来动画化分数变化
+	_score_tween = create_tween()
+	_score_tween.tween_method(_set_display_score, from, to, 0.3)
+
+	# 播放缩放动画
+	_score_tween.set_parallel(true)
+	_score_tween.tween_property(_score_label, "scale", Vector2(1.1, 1.1), 0.1)
+	_score_tween.chain().tween_property(_score_label, "scale", Vector2.ONE, 0.1)
+
+
+## 设置显示分数（用于动画）
+func _set_display_score(score: int) -> void:
+	_display_score = score
+	_score_label.text = _format_score(score)
+
+
+## 格式化分数显示
+func _format_score(score: int) -> String:
+	# 添加千位分隔符
+	var score_str = str(score)
+	var formatted = ""
+	var count = 0
+
+	for i in range(score_str.length() - 1, -1, -1):
+		if count > 0 and count % 3 == 0:
+			formatted = "," + formatted
+		formatted = score_str[i] + formatted
+		count += 1
+
+	return formatted
 
 
 ## 连击更新回调
 func _on_combo_updated(combo: int) -> void:
-	_combo_display.update_combo(combo)
+	_current_combo = combo
+	_update_combo_display(combo)
+
+
+## 更新连击显示
+func _update_combo_display(combo: int) -> void:
+	# 更新文本
+	_combo_label.text = str(combo)
+	
+	# 更新可见性
+	_combo_display.visible = combo > 0
+	
+	if combo > 0:
+		# 播放缩放动画
+		if _combo_tween:
+			_combo_tween.kill()
+		
+		_combo_tween = create_tween()
+		_combo_tween.tween_property(_combo_label, "scale", Vector2(1.2, 1.2), 0.1)
+		_combo_tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.1)
+		
+		# 高亮模式（50连击以上）
+		if combo >= 50:
+			_combo_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.0))  # 金色
+		else:
+			_combo_label.add_theme_color_override("font_color", Color.WHITE)
+	else:
+		# 断连动画
+		if _combo_tween:
+			_combo_tween.kill()
+		
+		_combo_tween = create_tween()
+		_combo_tween.tween_property(_combo_label, "modulate:a", 0.0, 0.3)
 
 
 ## 时间更新回调
 func _on_time_updated(current_time: float) -> void:
 	# 更新魂槽
 	var soul_percentage = _game_controller.get_soul_percentage()
-	_soul_gauge.update_soul(soul_percentage * 100.0)  # 转换为0-100范围
+	_update_soul_gauge(soul_percentage * 100.0)  # 转换为0-100范围
 
 	# 更新进度条（简化实现）
 	if _game_controller.current_course:
@@ -449,29 +470,57 @@ func _on_time_updated(current_time: float) -> void:
 		if total_duration > 0:
 			var progress = (current_time / total_duration) * 100.0
 			_progress_bar.value = clamp(progress, 0.0, 100.0)
-	
+
 	# 更新歌词显示
-	_lyrics_display.update(current_time)
+	if _lyrics_component:
+		_lyrics_component.update(current_time)
+		_lyrics_label.text = _lyrics_component.get_current_lyrics()
 
 
-## 魂槽达到阈值回调
-func _on_soul_threshold_reached() -> void:
-	# 可以添加视觉效果
-	pass
+## 更新魂槽显示
+func _update_soul_gauge(percentage: float) -> void:
+	_current_soul = clamp(percentage, 0.0, 100.0)
+	
+	# 更新标签
+	_soul_gauge_label.text = "%.1f%%" % _current_soul
+	
+	# 更新填充条宽度
+	var target_width = (_current_soul / 100.0) * _soul_gauge_container.size.x
+	
+	if _soul_tween:
+		_soul_tween.kill()
+	
+	_soul_tween = create_tween()
+	_soul_tween.tween_property(_soul_gauge_fill, "size:x", target_width, 0.3)
+	
+	# 更新颜色
+	var target_color: Color
+	if _current_soul >= 80.0:
+		target_color = Color(1.0, 0.8, 0.0)  # 金色（清除状态）
+	elif _current_soul < 30.0:
+		target_color = Color(1.0, 0.3, 0.3)  # 红色（危险状态）
+	else:
+		target_color = Color(0.3, 0.6, 1.0)  # 蓝色（正常状态）
+	
+	var color_tween = create_tween()
+	color_tween.tween_property(_soul_gauge_fill, "color", target_color, 0.2)
 
 
 ## 皮肤切换回调
 func _on_skin_changed(skin_name: String) -> void:
+	# 更新背景颜色
+	var bg_color := SkinManager.get_background_color()
+	_background.color = bg_color
+	
+	# 更新音符区域背景颜色
+	var note_area_color := SkinManager.get_note_area_color()
+	_note_area_background.color = Color(note_area_color.r, note_area_color.g, note_area_color.b, 0.8)
+	
 	# 更新判定线颜色
 	var judge_line_color := SkinManager.get_judge_line_color()
-	var judge_line_height := SkinManager.get_judge_line_height()
 	_judge_line.color = Color(judge_line_color.r, judge_line_color.g, judge_line_color.b, 0.8)
-	_judge_line.custom_minimum_size = Vector2(judge_line_height, 300)
-	
-	# 更新Go-Go覆盖层颜色
-	var gogo_color := SkinManager.get_gogo_overlay_color()
-	_gogo_overlay.color = Color(gogo_color.r, gogo_color.g, gogo_color.b, _gogo_overlay.color.a)
-	
+	_judge_line_glow.color = Color(judge_line_color.r, judge_line_color.g, judge_line_color.b, 0.3)
+
 	# 如果Go-Go Time正在激活，更新判定线为高亮颜色
 	if _is_gogo_active:
 		var bright_color := Color(judge_line_color.r * 1.1, judge_line_color.g * 1.1, judge_line_color.b * 0.9, 1.0)
@@ -511,6 +560,10 @@ func _animate_gogo_start() -> void:
 	bright_color = bright_color.clamp()
 	var judge_tween = create_tween()
 	judge_tween.tween_property(_judge_line, "color", bright_color, 0.3)
+	
+	# 增强判定线发光
+	var glow_tween = create_tween()
+	glow_tween.tween_property(_judge_line_glow, "color:a", 0.5, 0.3)
 
 
 ## Go-Go Time结束动画
@@ -523,13 +576,17 @@ func _animate_gogo_end() -> void:
 	var judge_line_color := SkinManager.get_judge_line_color()
 	var judge_tween = create_tween()
 	judge_tween.tween_property(_judge_line, "color", Color(judge_line_color.r, judge_line_color.g, judge_line_color.b, 0.8), 0.3)
+	
+	# 恢复判定线发光
+	var glow_tween = create_tween()
+	glow_tween.tween_property(_judge_line_glow, "color:a", 0.3, 0.3)
 
 
 ## 更新分支显示
 func _update_branch_display() -> void:
 	var branch_name: String
 	var branch_color: Color
-	
+
 	match _current_branch:
 		TJAData.BranchType.NORMAL:
 			branch_name = "Normal"
@@ -543,10 +600,10 @@ func _update_branch_display() -> void:
 		_:
 			branch_name = ""
 			branch_color = Color(1.0, 1.0, 1.0)
-	
+
 	_branch_label.text = branch_name
 	_branch_label.add_theme_color_override("font_color", branch_color)
-	
+
 	# 添加闪烁动画
 	var tween = create_tween()
 	tween.tween_property(_branch_label, "modulate:a", 0.5, 0.1)
@@ -557,13 +614,31 @@ func _update_branch_display() -> void:
 
 ## 显示判定结果
 func show_judge_result(judge_type: String) -> void:
+	# 停止之前的动画
+	if _judge_tween:
+		_judge_tween.kill()
+	
+	# 设置文本和颜色
 	match judge_type:
 		"良":
-			_judge_display.show_judge(JudgeDisplay.JudgeType.PERFECT)
+			_judge_label.text = "良"
+			_judge_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.0))  # 金色
 		"可":
-			_judge_display.show_judge(JudgeDisplay.JudgeType.GOOD)
+			_judge_label.text = "可"
+			_judge_label.add_theme_color_override("font_color", Color(0.5, 0.8, 1.0))  # 蓝色
 		"不可":
-			_judge_display.show_judge(JudgeDisplay.JudgeType.MISS)
+			_judge_label.text = "不可"
+			_judge_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))  # 红色
+		_:
+			return
+	
+	# 重置透明度并显示
+	_judge_label.modulate.a = 1.0
+	
+	# 创建淡出动画
+	_judge_tween = create_tween()
+	_judge_tween.tween_interval(0.5)  # 显示持续时间
+	_judge_tween.tween_property(_judge_label, "modulate:a", 0.0, 0.2)  # 淡出
 
 
 ## 获取游戏控制器
