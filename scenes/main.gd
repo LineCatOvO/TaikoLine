@@ -78,9 +78,8 @@ func _on_start_button_pressed() -> void:
 func _on_options_button_pressed() -> void:
 	if not _navigation_enabled:
 		return
-	# 预留功能：打开设置界面
-	# TODO: 实现选项界面
-	pass
+	_navigation_enabled = false
+	_change_scene("res://scenes/settings.tscn")
 
 ## 退出按钮按下
 func _on_exit_button_pressed() -> void:

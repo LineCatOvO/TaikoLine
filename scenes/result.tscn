@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://result"]
+[gd_scene load_steps=3 format=3 uid="uid://result"]
 
 [ext_resource type="Script" path="res://src/ui/result.gd" id="1_result"]
+[ext_resource type="Script" path="res://scenes/result.gd" id="2_scene"]
 
 [node name="Result" type="Control"]
 layout_mode = 3
@@ -10,3 +11,233 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_result")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.05, 0.12, 1)
+
+[node name="BackgroundGradient" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.05, 0.2, 0.5)
+mouse_filter = 2
+
+[node name="TopBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 100.0
+grow_horizontal = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TopBar"]
+layout_mode = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="TopBar/VBoxContainer"]
+layout_mode = 2
+text = "RESULT"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SongTitleLabel" type="Label" parent="TopBar/VBoxContainer"]
+layout_mode = 2
+text = "---"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MainContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = -200.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LeftPanel" type="PanelContainer" parent="MainContainer"]
+custom_minimum_size = Vector2(350, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/LeftPanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="RankContainer" type="Control" parent="MainContainer/LeftPanel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RankLabel" type="Label" parent="MainContainer/LeftPanel/VBoxContainer/RankContainer"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -80.0
+offset_right = 100.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "S"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RankDescLabel" type="Label" parent="MainContainer/LeftPanel/VBoxContainer"]
+layout_mode = 2
+text = "RANK"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ScoreContainer" type="HBoxContainer" parent="MainContainer/LeftPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="ScorePrefix" type="Label" parent="MainContainer/LeftPanel/VBoxContainer/ScoreContainer"]
+layout_mode = 2
+text = "SCORE: "
+horizontal_alignment = 2
+
+[node name="ScoreLabel" type="Label" parent="MainContainer/LeftPanel/VBoxContainer/ScoreContainer"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+
+[node name="RightPanel" type="PanelContainer" parent="MainContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/RightPanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="StatsTitle" type="Label" parent="MainContainer/RightPanel/VBoxContainer"]
+layout_mode = 2
+text = "JUDGE STATS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MainContainer/RightPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="PerfectRow" type="HBoxContainer" parent="MainContainer/RightPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="PerfectName" type="Label" parent="MainContainer/RightPanel/VBoxContainer/PerfectRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "良 (PERFECT)"
+horizontal_alignment = 1
+
+[node name="PerfectLabel" type="Label" parent="MainContainer/RightPanel/VBoxContainer/PerfectRow"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+
+[node name="GoodRow" type="HBoxContainer" parent="MainContainer/RightPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="GoodName" type="Label" parent="MainContainer/RightPanel/VBoxContainer/GoodRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "可 (GOOD)"
+horizontal_alignment = 1
+
+[node name="GoodLabel" type="Label" parent="MainContainer/RightPanel/VBoxContainer/GoodRow"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+
+[node name="MissRow" type="HBoxContainer" parent="MainContainer/RightPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="MissName" type="Label" parent="MainContainer/RightPanel/VBoxContainer/MissRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "不可 (MISS)"
+horizontal_alignment = 1
+
+[node name="MissLabel" type="Label" parent="MainContainer/RightPanel/VBoxContainer/MissRow"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+
+[node name="HSeparator2" type="HSeparator" parent="MainContainer/RightPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="ComboRow" type="HBoxContainer" parent="MainContainer/RightPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="ComboName" type="Label" parent="MainContainer/RightPanel/VBoxContainer/ComboRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "MAX COMBO"
+horizontal_alignment = 1
+
+[node name="MaxComboLabel" type="Label" parent="MainContainer/RightPanel/VBoxContainer/ComboRow"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+
+[node name="AccuracyRow" type="HBoxContainer" parent="MainContainer/RightPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="AccuracyName" type="Label" parent="MainContainer/RightPanel/VBoxContainer/AccuracyRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ACCURACY"
+horizontal_alignment = 1
+
+[node name="AccuracyLabel" type="Label" parent="MainContainer/RightPanel/VBoxContainer/AccuracyRow"]
+layout_mode = 2
+text = "0.00%"
+horizontal_alignment = 2
+
+[node name="BottomBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -80.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="BottomBar"]
+layout_mode = 2
+alignment = 1
+
+[node name="RetryButton" type="Button" parent="BottomBar/HBoxContainer"]
+custom_minimum_size = Vector2(150, 50)
+layout_mode = 2
+text = "Retry"
+
+[node name="Spacer" type="Control" parent="BottomBar/HBoxContainer"]
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="BottomBar/HBoxContainer"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+text = "Back to Song Select"
+
+[node name="SceneScript" type="Node" parent="."]
+script = ExtResource("2_scene")
