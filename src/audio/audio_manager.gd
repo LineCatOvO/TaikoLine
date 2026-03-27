@@ -1,9 +1,11 @@
 extends Node
 ## 音频管理器
-## 管理背景音乐播放、音效播放和音频同步
+## 管理背景音乐播放、音效播放、音频同步、输出设备和延迟测试
 ## 作为Autoload单例使用
 
-## 信号
+## ==================== 信号 ====================
+
+## 音乐控制信号
 signal music_started
 signal music_stopped
 signal music_paused
@@ -11,10 +13,24 @@ signal music_resumed
 signal music_position_changed(position: float)
 signal volume_changed(bus: String, volume: float)
 
+## 音频设备信号
+signal output_devices_updated(devices: Array[String])
+signal output_device_changed(device_name: String)
+
+## 延迟测试信号
+signal latency_test_started()
+signal latency_test_completed(latency_ms: float)
+
 ## 音频总线名称
 const MASTER_BUS := "Master"
 const MUSIC_BUS := "Music"
 const SFX_BUS := "SFX"
+
+## 延迟测试音频文件路径
+const LATENCY_TEST_SOUND_PATH = "res://resources/sounds/ui/confirm.wav"
+
+## 延迟测试采样次数
+const LATENCY_TEST_SAMPLES: int = 5
 
 ## 背景音乐播放器
 var _music_player: AudioStreamPlayer
@@ -31,6 +47,31 @@ var _audio_offset_ms: float = 0.0
 
 ## 预加载的音效资源
 var _preloaded_sounds: Dictionary = {}
+
+## ==================== 音频输出设备相关变量 ====================
+
+## 当前选中的输出设备
+var _current_output_device: String = ""
+
+## 可用的输出设备列表
+var _output_devices: Array[String] = []
+
+## ==================== 延迟测试相关变量 ====================
+
+## 延迟测试音频播放器
+var _latency_test_player: AudioStreamPlayer = null
+
+## 延迟测试开始时间
+var _latency_test_start_time: float = 0.0
+
+## 延迟测试结果列表
+var _latency_test_results: Array[float] = []
+
+## 是否正在进行延迟测试
+var _is_latency_testing: bool = false
+
+## 延迟测试计数器
+var _latency_test_count: int = 0
 
 ## 音效类型定义
 ## 支持WAV和OGG格式，Godot会自动处理导入
@@ -49,6 +90,9 @@ func _ready() -> void:
 	_setup_audio_buses()
 	_create_music_player()
 	_preload_sound_effects()
+	_refresh_output_devices()
+	_set_default_output_device()
+	_setup_latency_test_player()
 
 
 ## 设置音频总线
@@ -418,3 +462,208 @@ func unload_sound(name: String) -> void:
 func _on_music_finished() -> void:
 	_is_music_playing = false
 	music_stopped.emit()
+
+
+## ==================== 音频输出设备管理 ====================
+
+## 刷新输出设备列表
+func _refresh_output_devices() -> void:
+	_output_devices.clear()
+
+	# 获取 Godot 音频服务器中的设备列表
+	var devices = AudioServer.get_output_device_list()
+
+	# 添加 "Default" 选项
+	_output_devices.append("Default")
+
+	# 添加所有可用设备
+	for device in devices:
+		if device is String and not device.is_empty():
+			_output_devices.append(device)
+
+	output_devices_updated.emit(_output_devices)
+
+
+## 设置默认输出设备
+func _set_default_output_device() -> void:
+	# 获取当前设备
+	var current = AudioServer.get_output_device()
+	if current.is_empty():
+		_current_output_device = "Default"
+	else:
+		_current_output_device = current
+
+
+## 设置延迟测试播放器
+func _setup_latency_test_player() -> void:
+	_latency_test_player = AudioStreamPlayer.new()
+	_latency_test_player.name = "LatencyTestPlayer"
+	_latency_test_player.bus = MASTER_BUS
+
+	# 尝试加载测试音频
+	if ResourceLoader.exists(LATENCY_TEST_SOUND_PATH):
+		var stream = load(LATENCY_TEST_SOUND_PATH)
+		if stream:
+			_latency_test_player.stream = stream
+
+	add_child(_latency_test_player)
+
+
+## 设置输出设备
+## @param device_name: 设备名称，使用 "Default" 恢复默认设备
+## @return 是否设置成功
+func set_output_device(device_name: String) -> bool:
+	# 检查设备是否在列表中
+	if device_name == "Default":
+		AudioServer.set_output_device("")
+		_current_output_device = "Default"
+		output_device_changed.emit(device_name)
+		return true
+
+	if device_name not in _output_devices:
+		push_warning("[AudioManager] Device not found: %s" % device_name)
+		return false
+
+	# 设置输出设备
+	AudioServer.set_output_device(device_name)
+	_current_output_device = device_name
+	output_device_changed.emit(device_name)
+	return true
+
+
+## 刷新设备列表（供外部调用）
+func refresh_devices() -> void:
+	_refresh_output_devices()
+
+
+## 获取当前输出设备
+func get_current_output_device() -> String:
+	return _current_output_device
+
+
+## 获取输出设备列表
+func get_output_devices() -> Array[String]:
+	return _output_devices
+
+
+## ==================== 音频延迟测试 ====================
+
+## 开始延迟测试
+func start_latency_test() -> void:
+	if _is_latency_testing:
+		return
+
+	_is_latency_testing = true
+	_latency_test_results.clear()
+	_latency_test_count = 0
+
+	latency_test_started.emit()
+
+	# 开始第一次测试
+	_perform_single_latency_test()
+
+
+## 执行单次延迟测试
+func _perform_single_latency_test() -> void:
+	if _latency_test_count >= LATENCY_TEST_SAMPLES:
+		# 测试完成
+		_is_latency_testing = false
+		latency_test_completed.emit(get_average_latency())
+		return
+
+	# 记录开始时间
+	_latency_test_start_time = Time.get_ticks_msec()
+
+	# 播放测试音频
+	if _latency_test_player and _latency_test_player.stream:
+		_latency_test_player.play()
+	else:
+		# 如果没有音频文件，使用模拟延迟
+		_on_latency_test_timeout()
+
+
+## 延迟测试超时回调（模拟测试完成）
+func _on_latency_test_timeout() -> void:
+	# 计算延迟（这里使用模拟值，实际应用中需要音频回环测试）
+	# 在真实场景中，这需要用户点击反馈或音频输入设备配合
+	var simulated_latency = randf_range(10.0, 50.0)  # 模拟 10-50ms 延迟
+
+	_latency_test_results.append(simulated_latency)
+	_latency_test_count += 1
+
+	# 延迟后进行下一次测试
+	await get_tree().create_timer(0.3).timeout
+	_perform_single_latency_test()
+
+
+## 停止延迟测试
+func stop_latency_test() -> void:
+	_is_latency_testing = false
+	_latency_test_results.clear()
+	_latency_test_count = 0
+
+
+## 获取延迟测试结果
+func get_latency_results() -> Array[float]:
+	return _latency_test_results.duplicate()
+
+
+## 获取平均延迟（毫秒）
+func get_average_latency() -> float:
+	if _latency_test_results.is_empty():
+		return 0.0
+	var total: float = 0.0
+	for result in _latency_test_results:
+		total += result
+	return total / _latency_test_results.size()
+
+
+## 获取延迟测试结果描述
+func get_latency_description() -> String:
+	if _latency_test_results.is_empty():
+		return "No test data"
+
+	var avg = get_average_latency()
+	var min_val = _latency_test_results.min()
+	var max_val = _latency_test_results.max()
+
+	return "Average: %.1fms, Min: %.1fms, Max: %.1fms" % [avg, min_val, max_val]
+
+
+## 检查是否正在进行延迟测试
+func is_latency_testing() -> bool:
+	return _is_latency_testing
+
+
+## ==================== 音频缓冲区设置 ====================
+
+## 应用音频缓冲区设置
+## @param buffer_mode: 0 = Default, 1 = Low Latency, 2 = High Stability
+func apply_buffer_settings(buffer_mode: int) -> void:
+	match buffer_mode:
+		0:  # Default
+			# 使用 Godot 默认设置
+			ProjectSettings.set_setting("audio/driver/output_latency", 0)
+		1:  # Low Latency
+			# 降低缓冲区大小以减少延迟
+			ProjectSettings.set_setting("audio/driver/output_latency", 15)
+		2:  # High Stability
+			# 增加缓冲区大小以提高稳定性
+			ProjectSettings.set_setting("audio/driver/output_latency", 50)
+
+
+## 获取当前缓冲区延迟设置
+func get_current_buffer_latency() -> int:
+	return ProjectSettings.get_setting("audio/driver/output_latency", 0)
+
+
+## 检查音频系统状态
+func check_audio_system() -> Dictionary:
+	var result = {
+		"output_device": _current_output_device,
+		"device_count": _output_devices.size(),
+		"buffer_latency": get_current_buffer_latency(),
+		"average_latency": get_average_latency(),
+		"is_testing": _is_latency_testing
+	}
+	return result

@@ -392,3 +392,124 @@ func test_get_unloaded_sound() -> void:
 func test_music_position_signal() -> void:
 	# 验证信号存在
 	assert_true(audio_manager.has_signal("music_position_changed"), "应有 music_position_changed 信号")
+
+
+# =============================================================================
+# AUD-021: 音频输出设备信号
+# 测试音频输出设备相关信号
+# =============================================================================
+func test_aud_021_output_device_signals() -> void:
+	# 验证信号存在
+	assert_true(audio_manager.has_signal("output_devices_updated"), "应有 output_devices_updated 信号")
+	assert_true(audio_manager.has_signal("output_device_changed"), "应有 output_device_changed 信号")
+
+
+# =============================================================================
+# AUD-022: 延迟测试信号
+# 测试延迟测试相关信号
+# =============================================================================
+func test_aud_022_latency_test_signals() -> void:
+	# 验证信号存在
+	assert_true(audio_manager.has_signal("latency_test_started"), "应有 latency_test_started 信号")
+	assert_true(audio_manager.has_signal("latency_test_completed"), "应有 latency_test_completed 信号")
+
+
+# =============================================================================
+# AUD-023: 输出设备列表获取
+# 测试获取输出设备列表
+# =============================================================================
+func test_aud_023_get_output_devices() -> void:
+	# 获取设备列表
+	var devices = audio_manager.get_output_devices()
+	assert_not_null(devices, "设备列表不应为 null")
+
+	# 应至少包含 Default 选项
+	assert_true(devices.size() > 0, "设备列表应至少包含 Default")
+	assert_true("Default" in devices, "设备列表应包含 Default 选项")
+
+
+# =============================================================================
+# AUD-024: 设置输出设备
+# 测试设置输出设备
+# =============================================================================
+func test_aud_024_set_output_device() -> void:
+	# 测试设置 Default 设备
+	var result = audio_manager.set_output_device("Default")
+	assert_true(result, "设置 Default 设备应成功")
+
+	# 测试设置不存在的设备
+	result = audio_manager.set_output_device("NonExistentDevice")
+	assert_false(result, "设置不存在的设备应失败")
+
+
+# =============================================================================
+# AUD-025: 获取当前输出设备
+# 测试获取当前输出设备
+# =============================================================================
+func test_aud_025_get_current_output_device() -> void:
+	# 获取当前设备
+	var device = audio_manager.get_current_output_device()
+	assert_not_null(device, "当前设备不应为 null")
+
+
+# =============================================================================
+# AUD-026: 延迟测试状态
+# 测试延迟测试状态检查
+# =============================================================================
+func test_aud_026_latency_testing_state() -> void:
+	# 初始状态不应在测试中
+	var is_testing = audio_manager.is_latency_testing()
+	assert_false(is_testing, "初始状态不应在延迟测试中")
+
+
+# =============================================================================
+# AUD-027: 延迟测试结果
+# 测试延迟测试结果获取
+# =============================================================================
+func test_aud_027_latency_results() -> void:
+	# 未测试时平均延迟应为 0
+	var avg_latency = audio_manager.get_average_latency()
+	assert_eq(avg_latency, 0.0, "未测试时平均延迟应为 0")
+
+	# 获取延迟描述
+	var description = audio_manager.get_latency_description()
+	assert_eq(description, "No test data", "未测试时描述应为 No test data")
+
+
+# =============================================================================
+# AUD-028: 缓冲区设置
+# 测试音频缓冲区设置
+# =============================================================================
+func test_aud_028_buffer_settings() -> void:
+	# 测试应用缓冲区设置（不应崩溃）
+	audio_manager.apply_buffer_settings(0)  # Default
+	audio_manager.apply_buffer_settings(1)  # Low Latency
+	audio_manager.apply_buffer_settings(2)  # High Stability
+	assert_true(true, "应用缓冲区设置不应崩溃")
+
+
+# =============================================================================
+# AUD-029: 音频系统状态检查
+# 测试音频系统状态检查
+# =============================================================================
+func test_aud_029_audio_system_check() -> void:
+	# 检查音频系统状态
+	var status = audio_manager.check_audio_system()
+	assert_not_null(status, "状态字典不应为 null")
+
+	# 验证状态字典包含必要的键
+	assert_true("output_device" in status, "状态应包含 output_device")
+	assert_true("device_count" in status, "状态应包含 device_count")
+	assert_true("buffer_latency" in status, "状态应包含 buffer_latency")
+	assert_true("average_latency" in status, "状态应包含 average_latency")
+	assert_true("is_testing" in status, "状态应包含 is_testing")
+
+
+# =============================================================================
+# AUD-030: 刷新设备列表
+# 测试刷新设备列表
+# =============================================================================
+func test_aud_030_refresh_devices() -> void:
+	# 刷新设备列表（不应崩溃）
+	audio_manager.refresh_devices()
+	assert_true(true, "刷新设备列表不应崩溃")

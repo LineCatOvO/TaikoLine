@@ -4,6 +4,7 @@ extends Control
 
 const EditorController = preload("res://src/editor/editor_controller.gd")
 const EditorData = preload("res://src/editor/editor_data.gd")
+const TJAData = preload("res://src/parser/tja_data.gd")
 const TimelineView = preload("res://src/editor/timeline_view.gd")
 const PreviewController = preload("res://src/editor/preview_controller.gd")
 const BranchEditor = preload("res://src/editor/branch_editor.gd")
@@ -38,6 +39,9 @@ var branch_buttons: ButtonGroup = null
 ## 音符选择按钮组
 var note_buttons: ButtonGroup
 
+## 难度选择按钮组
+var course_buttons: ButtonGroup
+
 ## 当前文件路径
 var current_file_path: String = ""
 
@@ -50,6 +54,10 @@ var selected_measure_index: int = -1
 ## 音频相关属性
 var audio_file_path: String = ""
 var audio_file_dialog: FileDialog = null
+
+## TJA文件对话框
+var open_file_dialog: FileDialog = null
+var save_file_dialog: FileDialog = null
 
 ## 节拍器
 var metronome: Metronome = null
@@ -80,6 +88,7 @@ func _ready() -> void:
 	_connect_signals()
 	_setup_note_buttons()
 	_setup_audio_dialog()
+	_setup_file_dialogs()
 	_setup_metronome()
 	_setup_grid_ui()
 	_update_ui()
@@ -96,6 +105,9 @@ func _setup_ui() -> void:
 	# 创建分支按钮组
 	branch_buttons = ButtonGroup.new()
 
+	# 创建难度选择按钮组
+	course_buttons = ButtonGroup.new()
+
 	# 创建预览控制器
 	preview_controller = PreviewController.new()
 	preview_controller.set_editor_controller(controller)
@@ -104,11 +116,24 @@ func _setup_ui() -> void:
 	# 创建播放控制工具栏
 	_setup_playback_toolbar()
 
+	# 创建难度选择工具栏
+	_setup_course_toolbar()
+
 	# 创建分支工具栏
 	_setup_branch_toolbar()
 
 	# 创建分支编辑器
 	_setup_branch_editor()
+
+
+## 连接菜单信号
+func _connect_menu_signals() -> void:
+	# 连接菜单按钮的弹出菜单信号
+	for child in menu_bar.get_children():
+		if child is MenuButton:
+			var popup = child.get_popup()
+			if popup:
+				popup.id_pressed.connect(_on_menu_item_pressed)
 
 
 ## 连接信号
@@ -141,6 +166,9 @@ func _connect_signals() -> void:
 		branch_editor.branch_selected.connect(_on_branch_selected)
 		branch_editor.condition_added.connect(_on_condition_added)
 		branch_editor.condition_removed.connect(_on_condition_removed)
+
+	# 连接菜单信号
+	_connect_menu_signals()
 
 
 ## 设置播放控制工具栏
@@ -215,6 +243,67 @@ func _setup_playback_toolbar() -> void:
 
 	# 将播放控制工具栏添加到工具栏
 	toolbar.add_child(playback_toolbar)
+
+
+## 设置难度选择工具栏
+func _setup_course_toolbar() -> void:
+	# 创建难度选择工具栏容器
+	var course_toolbar = HBoxContainer.new()
+	course_toolbar.name = "CourseToolbar"
+
+	# 添加分隔符
+	var separator1 = VSeparator.new()
+	course_toolbar.add_child(separator1)
+
+	# 难度标签
+	var course_label = Label.new()
+	course_label.text = "难度:"
+	course_toolbar.add_child(course_label)
+
+	# Easy按钮
+	var easy_btn = Button.new()
+	easy_btn.text = "Easy"
+	easy_btn.tooltip_text = "简单难度"
+	easy_btn.toggle_mode = true
+	easy_btn.button_group = course_buttons
+	easy_btn.pressed.connect(_on_course_button_pressed.bind(TJAData.CourseType.EASY))
+	course_toolbar.add_child(easy_btn)
+
+	# Normal按钮
+	var normal_btn = Button.new()
+	normal_btn.text = "Normal"
+	normal_btn.tooltip_text = "普通难度"
+	normal_btn.toggle_mode = true
+	normal_btn.button_group = course_buttons
+	normal_btn.pressed.connect(_on_course_button_pressed.bind(TJAData.CourseType.NORMAL))
+	course_toolbar.add_child(normal_btn)
+
+	# Hard按钮
+	var hard_btn = Button.new()
+	hard_btn.text = "Hard"
+	hard_btn.tooltip_text = "困难难度"
+	hard_btn.toggle_mode = true
+	hard_btn.button_group = course_buttons
+	hard_btn.pressed.connect(_on_course_button_pressed.bind(TJAData.CourseType.HARD))
+	course_toolbar.add_child(hard_btn)
+
+	# Oni按钮（默认选中）
+	var oni_btn = Button.new()
+	oni_btn.text = "Oni"
+	oni_btn.tooltip_text = "魔王难度"
+	oni_btn.toggle_mode = true
+	oni_btn.button_group = course_buttons
+	oni_btn.button_pressed = true
+	oni_btn.pressed.connect(_on_course_button_pressed.bind(TJAData.CourseType.ONI))
+	course_toolbar.add_child(oni_btn)
+
+	# 将难度选择工具栏添加到工具栏
+	toolbar.add_child(course_toolbar)
+
+
+## 难度按钮按下回调
+func _on_course_button_pressed(course_type: TJAData.CourseType) -> void:
+	controller.set_current_course(course_type)
 
 
 ## 设置音符按钮
@@ -312,15 +401,16 @@ func _open_project() -> void:
 		# TODO: 显示保存确认对话框
 		pass
 
-	# TODO: 显示文件选择对话框
-	# 这里使用简化的文件路径
-	var file_path = ""  # 需要通过文件对话框获取
+	if open_file_dialog:
+		open_file_dialog.popup_centered(Vector2i(800, 600))
 
-	if not file_path.is_empty():
-		if controller.load_project(file_path):
-			current_file_path = file_path
-			is_modified = false
-			_update_ui()
+
+## 打开文件选择回调
+func _on_open_file_selected(file_path: String) -> void:
+	if controller.load_project(file_path):
+		current_file_path = file_path
+		is_modified = false
+		_update_ui()
 
 
 ## 保存项目
@@ -335,14 +425,16 @@ func _save_project() -> void:
 
 ## 另存为
 func _save_project_as() -> void:
-	# TODO: 显示文件保存对话框
-	var file_path = ""  # 需要通过文件对话框获取
+	if save_file_dialog:
+		save_file_dialog.popup_centered(Vector2i(800, 600))
 
-	if not file_path.is_empty():
-		if controller.save_project(file_path):
-			current_file_path = file_path
-			is_modified = false
-			_update_ui()
+
+## 保存文件选择回调
+func _on_save_file_selected(file_path: String) -> void:
+	if controller.save_project(file_path):
+		current_file_path = file_path
+		is_modified = false
+		_update_ui()
 
 
 ## 退出编辑器
@@ -1146,6 +1238,29 @@ func _setup_audio_dialog() -> void:
 	audio_file_dialog.filters = ["*.ogg ; OGG Vorbis", "*.mp3 ; MP3 Audio", "*.wav ; WAV Audio"]
 	audio_file_dialog.file_selected.connect(_on_audio_file_selected)
 	add_child(audio_file_dialog)
+
+
+## 设置TJA文件对话框
+func _setup_file_dialogs() -> void:
+	# 打开文件对话框
+	open_file_dialog = FileDialog.new()
+	open_file_dialog.name = "OpenFileDialog"
+	open_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	open_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	open_file_dialog.title = "打开TJA文件"
+	open_file_dialog.filters = ["*.tja ; TJA Chart File", "*.tjf ; TJF Chart File"]
+	open_file_dialog.file_selected.connect(_on_open_file_selected)
+	add_child(open_file_dialog)
+
+	# 保存文件对话框
+	save_file_dialog = FileDialog.new()
+	save_file_dialog.name = "SaveFileDialog"
+	save_file_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	save_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	save_file_dialog.title = "保存TJA文件"
+	save_file_dialog.filters = ["*.tja ; TJA Chart File"]
+	save_file_dialog.file_selected.connect(_on_save_file_selected)
+	add_child(save_file_dialog)
 
 
 ## 设置节拍器

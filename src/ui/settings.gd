@@ -62,6 +62,9 @@ const TAB_NAMES = ["Audio", "Game", "Display", "Advanced"]
 @onready var _buffer_option: OptionButton = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/BufferSection/BufferOption
 @onready var _audio_offset_slider: HSlider = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection/AudioOffsetHBox/AudioOffsetSlider
 @onready var _audio_offset_value: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection/AudioOffsetHBox/AudioOffsetValue
+@onready var _output_device_option: OptionButton = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/OutputDeviceSection/OutputDeviceOption
+@onready var _latency_test_btn: Button = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox/LatencyTestBtn
+@onready var _latency_result_label: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox/LatencyResultLabel
 
 ## UI 节点引用 - 底部栏
 @onready var _back_btn: Button = $BottomBar/BottomHBox/BackBtn
@@ -99,12 +102,16 @@ func _ready() -> void:
 	# 初始化选项
 	_setup_resolution_options()
 	_setup_buffer_options()
+	_setup_output_device_options()
 
 	# 加载设置
 	_load_settings()
 
 	# 设置音效
 	_setup_sounds()
+
+	# 连接音频管理器信号
+	_connect_audio_manager_signals()
 
 
 ## 设置标签页按钮组
@@ -164,6 +171,13 @@ func _load_settings() -> void:
 	# 高级设置
 	_buffer_option.select(Settings.buffer_size)
 	_audio_offset_slider.value = Settings.audio_offset
+	_select_current_output_device()
+
+	# 延迟测试结果
+	if Settings.audio_latency_result > 0:
+		_latency_result_label.text = "%.1f ms" % Settings.audio_latency_result
+	else:
+		_latency_result_label.text = "Not tested"
 
 	# 更新显示值
 	_update_all_display_values()
@@ -399,6 +413,8 @@ func _reset_to_defaults() -> void:
 	# 高级设置
 	Settings.buffer_size = 0
 	Settings.audio_offset = 0.0
+	Settings.audio_output_device = ""
+	Settings.audio_latency_result = 0.0
 
 	# 重新加载 UI
 	_load_settings()
@@ -460,3 +476,133 @@ func _navigate_tab(direction: int) -> void:
 
 	_tab_buttons[new_tab].button_pressed = true
 	_on_tab_pressed(new_tab)
+
+
+## ========== 音频输出设备相关方法 ==========
+
+## 初始化输出设备选项
+func _setup_output_device_options() -> void:
+	_output_device_option.clear()
+
+	# 检查 AudioManager 是否存在
+	if not _has_audio_manager():
+		_output_device_option.add_item("Default")
+		_output_device_option.disabled = true
+		return
+
+	# 获取设备列表
+	var devices = AudioManager.get_output_devices()
+	for device in devices:
+		_output_device_option.add_item(device)
+
+	_output_device_option.disabled = false
+
+
+## 连接音频管理器信号
+func _connect_audio_manager_signals() -> void:
+	if not _has_audio_manager():
+		return
+
+	# 连接设备列表更新信号
+	if not AudioManager.output_devices_updated.is_connected(_on_output_devices_updated):
+		AudioManager.output_devices_updated.connect(_on_output_devices_updated)
+
+	# 连接延迟测试信号
+	if not AudioManager.latency_test_started.is_connected(_on_latency_test_started):
+		AudioManager.latency_test_started.connect(_on_latency_test_started)
+
+	if not AudioManager.latency_test_completed.is_connected(_on_latency_test_completed):
+		AudioManager.latency_test_completed.connect(_on_latency_test_completed)
+
+
+## 检查 AudioManager 是否存在
+func _has_audio_manager() -> bool:
+	return get_tree().root.has_node("AudioManager")
+
+
+## 获取 AudioManager 实例
+func _get_audio_manager():
+	if _has_audio_manager():
+		return get_tree().root.get_node("AudioManager")
+	return null
+
+
+## 输出设备列表更新回调
+func _on_output_devices_updated(devices: Array[String]) -> void:
+	_output_device_option.clear()
+	for device in devices:
+		_output_device_option.add_item(device)
+
+	# 重新选择当前设备
+	_select_current_output_device()
+
+
+## 选择当前输出设备
+func _select_current_output_device() -> void:
+	var current_device = Settings.audio_output_device
+	if current_device.is_empty():
+		current_device = "Default"
+
+	for i in range(_output_device_option.item_count):
+		if _output_device_option.get_item_text(i) == current_device:
+			_output_device_option.select(i)
+			return
+
+	# 默认选择第一个
+	_output_device_option.select(0)
+
+
+## 输出设备选择回调
+func _on_output_device_selected(index: int) -> void:
+	if index < 0 or index >= _output_device_option.item_count:
+		return
+
+	var device_name = _output_device_option.get_item_text(index)
+	Settings.audio_output_device = device_name if device_name != "Default" else ""
+
+	# 应用设备设置
+	if _has_audio_manager():
+		AudioManager.set_output_device(device_name)
+
+	_settings_modified = true
+
+
+## ========== 音频延迟测试相关方法 ==========
+
+## 延迟测试按钮回调
+func _on_latency_test_pressed() -> void:
+	if not _has_audio_manager():
+		_latency_result_label.text = "AudioManager not available"
+		return
+
+	if AudioManager.is_latency_testing():
+		# 停止测试
+		AudioManager.stop_latency_test()
+		_latency_test_btn.text = "Start Test"
+		_latency_result_label.text = "Test cancelled"
+		return
+
+	# 开始测试
+	AudioManager.start_latency_test()
+	_latency_test_btn.text = "Stop Test"
+	_latency_result_label.text = "Testing..."
+
+
+## 延迟测试开始回调
+func _on_latency_test_started() -> void:
+	_latency_result_label.text = "Testing..."
+
+
+## 延迟测试完成回调
+func _on_latency_test_completed(latency_ms: float) -> void:
+	_latency_test_btn.text = "Start Test"
+	_latency_result_label.text = "%.1f ms" % latency_ms
+
+	# 保存测试结果
+	Settings.audio_latency_result = latency_ms
+	_settings_modified = true
+
+	# 显示详细结果
+	if _has_audio_manager():
+		var description = AudioManager.get_latency_description()
+		print("[Audio Latency Test] %s" % description)

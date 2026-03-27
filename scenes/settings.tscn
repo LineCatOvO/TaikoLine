@@ -317,6 +317,40 @@ layout_mode = 2
 text = "0 ms"
 horizontal_alignment = 2
 
+[node name="OutputDeviceSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="OutputDeviceLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/OutputDeviceSection"]
+layout_mode = 2
+text = "Audio Output Device"
+
+[node name="OutputDeviceOption" type="OptionButton" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/OutputDeviceSection"]
+custom_minimum_size = Vector2(200, 40)
+layout_mode = 2
+
+[node name="LatencyTestSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="LatencyTestLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection"]
+layout_mode = 2
+text = "Audio Latency Test"
+
+[node name="LatencyTestHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection"]
+layout_mode = 2
+
+[node name="LatencyTestBtn" type="Button" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "Start Test"
+
+[node name="LatencyResultLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Not tested"
+horizontal_alignment = 2
+
 [node name="BottomBar" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 12
@@ -374,6 +408,8 @@ volume_db = -10.0
 [connection signal="pressed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioAdvancedSection/AudioAdvancedBtn" to="." method="_on_audio_advanced_pressed"]
 [connection signal="item_selected" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/BufferSection/BufferOption" to="." method="_on_buffer_size_selected"]
 [connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection/AudioOffsetHBox/AudioOffsetSlider" to="." method="_on_audio_offset_changed"]
+[connection signal="item_selected" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/OutputDeviceSection/OutputDeviceOption" to="." method="_on_output_device_selected"]
+[connection signal="pressed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox/LatencyTestBtn" to="." method="_on_latency_test_pressed"]
 [connection signal="pressed" from="BottomBar/BottomHBox/BackBtn" to="." method="_on_back_pressed"]
 [connection signal="pressed" from="BottomBar/BottomHBox/ResetBtn" to="." method="_on_reset_pressed"]
 [connection signal="pressed" from="BottomBar/BottomHBox/SaveBtn" to="." method="_on_save_pressed"]

@@ -23,6 +23,13 @@ var audio_offset: float = 0.0
 ## 0: Default, 1: Low Latency, 2: High Stability
 var buffer_size: int = 0
 
+## 音频输出设备名称
+## 空字符串表示使用默认设备
+var audio_output_device: String = ""
+
+## 音频延迟测试结果（毫秒）
+var audio_latency_result: float = 0.0
+
 ## ==================== 游戏设置 ====================
 
 ## 滚动速度 (1.0 - 10.0)
@@ -62,6 +69,8 @@ func save_settings() -> void:
 	config.set_value("audio", "sfx_volume", sfx_volume)
 	config.set_value("audio", "audio_offset", audio_offset)
 	config.set_value("audio", "buffer_size", buffer_size)
+	config.set_value("audio", "audio_output_device", audio_output_device)
+	config.set_value("audio", "audio_latency_result", audio_latency_result)
 
 	# 游戏设置
 	config.set_value("game", "scroll_speed", scroll_speed)
@@ -96,6 +105,8 @@ func load_settings() -> void:
 	sfx_volume = config.get_value("audio", "sfx_volume", 1.0)
 	audio_offset = config.get_value("audio", "audio_offset", 0.0)
 	buffer_size = config.get_value("audio", "buffer_size", 0)
+	audio_output_device = config.get_value("audio", "audio_output_device", "")
+	audio_latency_result = config.get_value("audio", "audio_latency_result", 0.0)
 
 	# 游戏设置
 	scroll_speed = config.get_value("game", "scroll_speed", 1.0)
@@ -119,6 +130,8 @@ func reset_to_defaults() -> void:
 	sfx_volume = 1.0
 	audio_offset = 0.0
 	buffer_size = 0
+	audio_output_device = ""
+	audio_latency_result = 0.0
 
 	# 游戏设置
 	scroll_speed = 1.0

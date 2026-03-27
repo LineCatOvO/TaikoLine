@@ -100,6 +100,10 @@ func _handle_click(position: Vector2) -> void:
 	var measure_index = int(adjusted_x / measure_width)
 	var position_in_measure = (adjusted_x - measure_index * measure_width) / measure_width
 
+	# 应用网格吸附
+	if snap_enabled:
+		position_in_measure = snap_position_to_grid(position_in_measure)
+
 	if measure_index >= 0 and measure_index < course.measures.size():
 		measure_clicked.emit(measure_index, clamp(position_in_measure, 0.0, 1.0))
 
@@ -196,7 +200,17 @@ func _draw_measure(measure: EditorData.EditorMeasure, x: float, width: float) ->
 
 ## 绘制网格线
 func _draw_grid_lines(x: float, y: float, width: float, height: float, time_signature: Vector2) -> void:
-	# 根据拍号绘制网格
+	# 根据网格细分绘制细网格线
+	var grid_step = 1.0 / float(grid_subdivision)
+	var grid_width = width * grid_step
+
+	# 绘制细网格线（较淡）
+	for i in range(1, grid_subdivision):
+		var line_x = x + i * grid_width
+		var grid_color = Color(0.25, 0.25, 0.25, 0.3)
+		draw_line(Vector2(line_x, y), Vector2(line_x, y + height), grid_color, 1.0)
+
+	# 根据拍号绘制拍线（较亮）
 	var beats = int(time_signature.x)
 	var beat_width = width / beats
 
@@ -346,6 +360,32 @@ func set_playing(playing: bool) -> void:
 
 ## 是否启用自动滚动
 var _auto_scroll_enabled: bool = true
+
+## 网格细分数量（4, 8, 16, 32）
+var grid_subdivision: int = 16
+
+## 是否启用吸附
+var snap_enabled: bool = true
+
+
+## 设置网格细分
+func set_grid_subdivision(subdivision: int) -> void:
+	grid_subdivision = max(1, subdivision)
+	queue_redraw()
+
+
+## 设置吸附启用状态
+func set_snap_enabled(enabled: bool) -> void:
+	snap_enabled = enabled
+
+
+## 将位置吸附到网格
+func snap_position_to_grid(position: float) -> float:
+	if not snap_enabled:
+		return position
+
+	var grid_step = 1.0 / float(grid_subdivision)
+	return round(position / grid_step) * grid_step
 
 
 ## 设置自动滚动
