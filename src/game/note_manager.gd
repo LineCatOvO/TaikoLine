@@ -156,24 +156,24 @@ func _load_normal_chart(course: TJAData.TJACourse, offset: float) -> void:
 func _load_branch_charts(course: TJAData.TJACourse, offset: float) -> void:
 	# 清空所有分支队列
 	for branch_type in _branch_note_queues.keys():
-		_branch_note_queues[branch_type] = []
-	
+		_branch_note_queues[branch_type] = [] as Array
+
 	# 加载每个分支的音符
 	for branch_type in [TJAData.BranchType.NORMAL, TJAData.BranchType.EXPERT, TJAData.BranchType.MASTER]:
 		var branch_measures = course.get_branch_measures(branch_type)
 		if branch_measures.is_empty():
 			# 如果该分支没有数据，使用普通分支数据
 			branch_measures = course.get_branch_measures(TJAData.BranchType.NORMAL)
-		
+
 		var current_time = offset
 		var current_bpm = 120.0
 		var current_scroll = 1.0
-		
+
 		for measure in branch_measures:
 			current_bpm = measure.bpm
 			current_scroll = measure.scroll
 			var measure_duration = measure.get_duration()
-			
+
 			for note in measure.notes:
 				if note.is_hittable():
 					var note_time = current_time + note.position * measure_duration
@@ -183,14 +183,17 @@ func _load_branch_charts(course: TJAData.TJACourse, offset: float) -> void:
 						"bpm": current_bpm,
 						"scroll": current_scroll
 					})
-			
+
 			current_time += measure_duration
-		
+
 		# 按时间排序
 		_branch_note_queues[branch_type].sort_custom(func(a, b): return a.hit_time < b.hit_time)
-	
+
 	# 设置初始音符队列为普通分支
-	_note_queue = _branch_note_queues[TJAData.BranchType.NORMAL].duplicate()
+	var normal_queue = _branch_note_queues[TJAData.BranchType.NORMAL]
+	_note_queue.clear()
+	for note_info in normal_queue:
+		_note_queue.append(note_info)
 
 
 ## 切换分支
@@ -371,7 +374,7 @@ func clear_all_notes() -> void:
 
 	# 清空分支队列
 	for branch_type in _branch_note_queues.keys():
-		_branch_note_queues[branch_type] = []
+		_branch_note_queues[branch_type] = [] as Array
 
 	# 重置分支状态
 	current_branch = TJAData.BranchType.NORMAL

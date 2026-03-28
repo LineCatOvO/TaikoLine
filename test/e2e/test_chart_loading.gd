@@ -107,7 +107,7 @@ func _create_branching_song() -> TJAData.TJASong:
 	course.level = 8
 	course.score_init = 1000
 	course.score_diff = 100
-	course.has_branches = true
+	course.has_branch = true
 
 	# 添加普通分支小节
 	var normal_measure = TJAData.TJAMeasure.new(0)
@@ -213,36 +213,37 @@ func test_cl002_metadata_validation() -> void:
 
 ## CL-002-2: 测试音符类型验证
 func test_cl002_note_type_validation() -> void:
-	# 验证音符类型常量
-	assert_eq(TJAData.NoteType.DON, 0, "DON 音符类型应为 0")
-	assert_eq(TJAData.NoteType.KA, 1, "KA 音符类型应为 1")
-	assert_eq(TJAData.NoteType.DON_BIG, 2, "DON_BIG 音符类型应为 2")
-	assert_eq(TJAData.NoteType.KA_BIG, 3, "KA_BIG 音符类型应为 3")
-	assert_eq(TJAData.NoteType.ROLL, 4, "ROLL 音符类型应为 4")
-	assert_eq(TJAData.NoteType.ROLL_BIG, 5, "ROLL_BIG 音符类型应为 5")
-	assert_eq(TJAData.NoteType.BALLOON, 6, "BALLOON 音符类型应为 6")
+	# 验证音符类型常量（根据 TJAData 实际定义）
+	assert_eq(TJAData.NoteType.NONE, 0, "NONE 音符类型应为 0")
+	assert_eq(TJAData.NoteType.DON, 1, "DON 音符类型应为 1")
+	assert_eq(TJAData.NoteType.KA, 2, "KA 音符类型应为 2")
+	assert_eq(TJAData.NoteType.DON_BIG, 3, "DON_BIG 音符类型应为 3")
+	assert_eq(TJAData.NoteType.KA_BIG, 4, "KA_BIG 音符类型应为 4")
+	assert_eq(TJAData.NoteType.RENDA, 5, "RENDA 音符类型应为 5")
+	assert_eq(TJAData.NoteType.RENDA_BIG, 6, "RENDA_BIG 音符类型应为 6")
+	assert_eq(TJAData.NoteType.BALLOON, 7, "BALLOON 音符类型应为 7")
 
 
 ## CL-002-3: 测试课程类型验证
 func test_cl002_course_type_validation() -> void:
-	# 验证课程类型常量
+	# 验证课程类型常量（根据 TJAData 实际定义）
 	assert_eq(TJAData.CourseType.EASY, 0, "EASY 课程类型应为 0")
 	assert_eq(TJAData.CourseType.NORMAL, 1, "NORMAL 课程类型应为 1")
 	assert_eq(TJAData.CourseType.HARD, 2, "HARD 课程类型应为 2")
 	assert_eq(TJAData.CourseType.ONI, 3, "ONI 课程类型应为 3")
-	assert_eq(TJAData.CourseType.URA, 4, "URA 课程类型应为 4")
+	assert_eq(TJAData.CourseType.EDIT, 4, "EDIT 课程类型应为 4")
 
 
-## CL-002-4: 测试音符时间验证
+## CL-002-4: 测试音符位置验证
 func test_cl002_note_time_validation() -> void:
 	var song = _create_test_song()
 	var course = song.get_course(TJAData.CourseType.ONI)
 
-	# 验证音符时间在有效范围内
+	# 验证音符位置在有效范围内（使用 position 属性而非 time）
 	for measure in course.measures:
 		for note in measure.notes:
-			assert_gte(note.time, 0.0, "音符时间应 >= 0")
-			assert_lt(note.time, 4.0, "音符时间应在小节范围内")
+			assert_gte(note.position, 0.0, "音符位置应 >= 0")
+			assert_lt(note.position, 1.0, "音符位置应在小节范围内 (0-1)")
 
 
 ## CL-002-5: 测试 BPM 范围验证
@@ -293,19 +294,19 @@ func test_cl003_course_switching() -> void:
 	assert_ne(easy_course.level, oni_course.level, "不同课程应有不同难度")
 
 
-## CL-003-4: 测试 URA 课程加载
+## CL-003-4: 测试 EDIT 课程加载
 func test_cl003_ura_course_loading() -> void:
 	var song = _create_test_song()
 
-	# 添加 URA 课程
-	var ura_course = TJAData.TJACourse.new()
-	ura_course.course_type = TJAData.CourseType.URA
-	ura_course.level = 10
-	song.add_course(ura_course)
+	# 添加 EDIT 课程（原 URA 对应 EDIT 类型）
+	var edit_course = TJAData.TJACourse.new()
+	edit_course.course_type = TJAData.CourseType.EDIT
+	edit_course.level = 10
+	song.add_course(edit_course)
 
-	# 验证 URA 课程
-	assert_not_null(song.get_course(TJAData.CourseType.URA), "应有 URA 课程")
-	assert_eq(song.get_course(TJAData.CourseType.URA).level, 10, "URA 难度应为 10")
+	# 验证 EDIT 课程
+	assert_not_null(song.get_course(TJAData.CourseType.EDIT), "应有 EDIT 课程")
+	assert_eq(song.get_course(TJAData.CourseType.EDIT).level, 10, "EDIT 难度应为 10")
 
 
 ## CL-003-5: 测试课程不存在处理
@@ -325,8 +326,8 @@ func test_cl004_branch_data_structure() -> void:
 	var song = _create_branching_song()
 	var course = song.get_course(TJAData.CourseType.ONI)
 
-	# 验证分支标志
-	assert_true(course.has_branches, "课程应有分支")
+	# 验证分支标志（使用 has_branch 而非 has_branches）
+	assert_true(course.has_branch, "课程应有分支")
 
 
 ## CL-004-2: 测试分支类型常量
@@ -342,8 +343,8 @@ func test_cl004_branch_conditions() -> void:
 	var song = _create_branching_song()
 	var course = song.get_course(TJAData.CourseType.ONI)
 
-	# 验证分支条件属性存在
-	assert_true(course.has_branches, "应有分支条件")
+	# 验证分支条件属性存在（使用 has_branch）
+	assert_true(course.has_branch, "应有分支条件")
 
 
 ## CL-004-4: 测试分支音符差异

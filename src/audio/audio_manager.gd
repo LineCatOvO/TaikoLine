@@ -85,11 +85,11 @@ var _latency_test_count: int = 0
 const SOUND_EFFECTS := {
 	"don": "res://resources/sounds/don.wav",
 	"ka": "res://resources/sounds/ka.wav",
-	"balloon": "res://resources/sounds/balloon.ogg",
-	"judge_perfect": "res://resources/sounds/judge_perfect.ogg",
-	"judge_good": "res://resources/sounds/judge_good.ogg",
-	"judge_miss": "res://resources/sounds/judge_miss.ogg",
-	"combo_bonus": "res://resources/sounds/combo_bonus.ogg"
+	"balloon": "res://resources/sounds/balloon.wav",
+	"judge_perfect": "res://resources/sounds/judge_perfect.wav",
+	"judge_good": "res://resources/sounds/judge_good.wav",
+	"judge_miss": "res://resources/sounds/judge_miss.wav",
+	"combo_bonus": "res://resources/sounds/combo_bonus.wav"
 }
 
 

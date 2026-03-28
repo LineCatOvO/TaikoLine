@@ -354,9 +354,17 @@ func get_judge_counts() -> Dictionary:
 ## 计算理论最高分
 func calculate_max_score() -> int:
 	var max_score = 0
+	var simulated_combo = 0  # 模拟连击数
+	
 	for i in range(total_notes):
+		# 模拟连击增加（与 _on_perfect_judge 一致）
+		simulated_combo += 1
+		
+		# 计算连击加成（使用模拟的连击数，与 _on_perfect_judge 一致）
 		var combo_bonus = 0.0
-		if i >= COMBO_BONUS_THRESHOLD:
-			combo_bonus = minf((i - COMBO_BONUS_THRESHOLD) * 0.01, COMBO_BONUS_MAX)
+		if simulated_combo >= COMBO_BONUS_THRESHOLD:
+			combo_bonus = minf((simulated_combo - COMBO_BONUS_THRESHOLD) * 0.01, COMBO_BONUS_MAX)
+		
 		max_score += int(base_score * (1.0 + combo_bonus))
+	
 	return max_score

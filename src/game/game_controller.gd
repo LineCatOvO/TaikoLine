@@ -295,21 +295,31 @@ func resume_game() -> void:
 func end_game() -> void:
 	if current_state == PlayState.ENDING or current_state == PlayState.IDLE:
 		return
-	
+
 	current_state = PlayState.ENDING
-	
+
 	# 停止音乐
 	music_player.stop()
-	
+
 	# 获取结果
 	var result = judge_system.check_game_end()
-	result.song_title = current_song.title
-	result.course_type = current_course.course_type
-	result.level = current_course.level
 	
+	# 安全地设置歌曲信息（检查 null）
+	if current_song != null:
+		result.song_title = current_song.title
+	else:
+		result.song_title = ""
+	
+	if current_course != null:
+		result.course_type = current_course.course_type
+		result.level = current_course.level
+	else:
+		result.course_type = TJAData.CourseType.ONI
+		result.level = 0
+
 	# 发送结束信号
 	game_ended.emit(result)
-	
+
 	current_state = PlayState.IDLE
 
 

@@ -220,33 +220,38 @@ func _binary_search_scroll_change(target_time: float) -> int:
 	return result
 
 
-## 时间转换为位置（优化版本 - 使用缓存的每秒像素数）
+## 时间转换为位置（优化版本 - 动态计算每秒像素数）
 ## @param time_diff: 时间差（秒），正数表示未来，负数表示过去
 ## @return: X坐标位置
 func time_to_position(time_diff: float) -> float:
 	# 计算有效滚动速度
 	var effective_speed = base_scroll_speed * _current_scroll
 
-	# 使用缓存的每秒像素数
-	var position = judge_line_x + time_diff * effective_speed * _cached_pixels_per_second
+	# 动态计算每秒像素数（确保 BPM 变化后计算正确）
+	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
+
+	var position = judge_line_x + time_diff * effective_speed * pixels_per_second
 
 	return position
 
 
-## 位置转换为时间（优化版本 - 使用缓存的每秒像素数）
+## 位置转换为时间（优化版本 - 动态计算每秒像素数）
 ## @param position: X坐标位置
 ## @return: 时间差（秒）
 func position_to_time(position: float) -> float:
 	var effective_speed = base_scroll_speed * _current_scroll
 
-	if effective_speed == 0 or _cached_pixels_per_second <= 0:
+	# 动态计算每秒像素数
+	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
+
+	if effective_speed == 0 or pixels_per_second <= 0:
 		return 0.0
 
 	# 允许负滚动速度产生负时间差
-	return (position - judge_line_x) / (effective_speed * _cached_pixels_per_second)
+	return (position - judge_line_x) / (effective_speed * pixels_per_second)
 
 
-## 获取生成提前时间（优化版本 - 使用缓存的每秒像素数）
+## 获取生成提前时间（优化版本 - 动态计算每秒像素数）
 ## @return: 音符应该提前多少秒生成
 func get_spawn_ahead_time() -> float:
 	# 假设音符从屏幕右侧生成
@@ -255,10 +260,13 @@ func get_spawn_ahead_time() -> float:
 
 	var effective_speed = base_scroll_speed * _current_scroll
 
-	if effective_speed <= 0 or _cached_pixels_per_second <= 0:
+	# 动态计算每秒像素数
+	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
+
+	if effective_speed <= 0 or pixels_per_second <= 0:
 		return 5.0  ## 默认5秒
 
-	return distance / (effective_speed * _cached_pixels_per_second)
+	return distance / (effective_speed * pixels_per_second)
 
 
 ## 获取当前BPM
@@ -276,7 +284,7 @@ func get_effective_scroll_speed() -> float:
 	return base_scroll_speed * _current_scroll
 
 
-## 计算时间范围内的距离（优化版本 - 使用缓存的每秒像素数）
+## 计算时间范围内的距离（优化版本 - 动态计算每秒像素数）
 ## @param start_time: 开始时间
 ## @param end_time: 结束时间
 ## @return: 距离（像素）
@@ -284,7 +292,10 @@ func calculate_distance(start_time: float, end_time: float) -> float:
 	var time_diff = end_time - start_time
 	var effective_speed = base_scroll_speed * _current_scroll
 
-	return abs(time_diff) * effective_speed * _cached_pixels_per_second
+	# 动态计算每秒像素数
+	var pixels_per_second = pixels_per_beat * _current_bpm / 60.0
+
+	return abs(time_diff) * effective_speed * pixels_per_second
 
 
 ## 获取BPM变化点数量

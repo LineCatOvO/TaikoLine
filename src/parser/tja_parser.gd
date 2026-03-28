@@ -64,7 +64,7 @@ func parse_file(file_path: String) -> TJAData.TJAParseResult:
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
 		result.success = false
-		result.error = "无法打开文件: " + file_path
+		result.error = "文件不存在: " + file_path
 		return result
 	file.close()
 
