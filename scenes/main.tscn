@@ -1,11 +1,13 @@
 [gd_scene format=3 uid="uid://main_menu"]
 
-[ext_resource type="PackedScene" path="res://scenes/components/main_background.tscn" id="1_background"]
-[ext_resource type="PackedScene" path="res://scenes/components/menu_logo.tscn" id="2_logo"]
-[ext_resource type="PackedScene" path="res://scenes/components/menu_button.tscn" id="3_button"]
-[ext_resource type="PackedScene" path="res://scenes/components/bottom_info.tscn" id="4_bottom"]
+[ext_resource type="Script" path="res://src/ui/main.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/components/main_background.tscn" id="2_background"]
+[ext_resource type="PackedScene" path="res://scenes/components/menu_logo.tscn" id="3_logo"]
+[ext_resource type="PackedScene" path="res://scenes/components/menu_button.tscn" id="4_button"]
+[ext_resource type="PackedScene" path="res://scenes/components/bottom_info.tscn" id="5_bottom"]
 
 [node name="MainMenu" type="Control"]
+script = ExtResource("1_script")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,7 +15,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Background" instance=ExtResource("1_background") parent="."]
+[node name="Background" instance=ExtResource("2_background") parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -21,7 +23,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Logo" instance=ExtResource("2_logo") parent="."]
+[node name="Logo" instance=ExtResource("3_logo") parent="."]
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -47,22 +49,22 @@ offset_right = 100.0
 offset_bottom = 75.0
 theme_override_constants/separation = 20
 
-[node name="StartButton" parent="MenuContainer" instance=ExtResource("3_button")]
+[node name="StartButton" parent="MenuContainer" instance=ExtResource("4_button")]
 layout_mode = 2
 size_flags_horizontal = 4
 text = "游戏开始"
 
-[node name="OptionsButton" parent="MenuContainer" instance=ExtResource("3_button")]
+[node name="OptionsButton" parent="MenuContainer" instance=ExtResource("4_button")]
 layout_mode = 2
 size_flags_horizontal = 4
 text = "选项"
 
-[node name="ExitButton" parent="MenuContainer" instance=ExtResource("3_button")]
+[node name="ExitButton" parent="MenuContainer" instance=ExtResource("4_button")]
 layout_mode = 2
 size_flags_horizontal = 4
 text = "退出"
 
-[node name="BottomInfo" instance=ExtResource("4_bottom") parent="."]
+[node name="BottomInfo" instance=ExtResource("5_bottom") parent="."]
 layout_mode = 1
 anchors_preset = 10
 anchor_top = 1.0

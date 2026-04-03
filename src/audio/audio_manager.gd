@@ -89,7 +89,10 @@ const SOUND_EFFECTS := {
 	"judge_perfect": "res://resources/sounds/judge_perfect.wav",
 	"judge_good": "res://resources/sounds/judge_good.wav",
 	"judge_miss": "res://resources/sounds/judge_miss.wav",
-	"combo_bonus": "res://resources/sounds/combo_bonus.wav"
+	"combo_bonus": "res://resources/sounds/combo_bonus.wav",
+	# UI 音效
+	"ui_navigate": "res://resources/sounds/ui/navigate.wav",
+	"ui_confirm": "res://resources/sounds/ui/confirm.wav"
 }
 
 
@@ -378,6 +381,18 @@ func play_judge_miss() -> void:
 ## 播放连击加成音
 func play_combo_bonus() -> void:
 	play_sfx("combo_bonus")
+
+
+## ==================== UI 音效播放 ====================
+
+## 播放 UI 导航音效（悬停、切换）
+func play_ui_navigate() -> void:
+	play_sfx("ui_navigate")
+
+
+## 播放 UI 确认音效（点击、确认）
+func play_ui_confirm() -> void:
+	play_sfx("ui_confirm")
 
 
 ## ==================== 音量控制 ====================

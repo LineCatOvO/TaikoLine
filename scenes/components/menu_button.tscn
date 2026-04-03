@@ -1,6 +1,9 @@
 [gd_scene format=3 uid="uid://menu_button"]
 
+[ext_resource type="Script" path="res://src/ui/components/menu_button.gd" id="1_script"]
+
 [node name="MenuButton" type="Button"]
+script = ExtResource("1_script")
 layout_mode = 1
 size_flags_horizontal = 4
 custom_minimum_size = Vector2(200, 50)

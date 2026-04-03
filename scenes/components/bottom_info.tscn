@@ -1,6 +1,9 @@
 [gd_scene format=3 uid="uid://bottom_info"]
 
+[ext_resource type="Script" path="res://src/ui/components/bottom_info.gd" id="1_script"]
+
 [node name="BottomInfo" type="Control"]
+script = ExtResource("1_script")
 layout_mode = 1
 anchors_preset = 10
 anchor_top = 1.0

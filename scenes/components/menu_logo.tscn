@@ -1,6 +1,9 @@
 [gd_scene format=3 uid="uid://menu_logo"]
 
+[ext_resource type="Script" path="res://src/ui/components/menu_logo.gd" id="1_script"]
+
 [node name="MenuLogo" type="Control"]
+script = ExtResource("1_script")
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -49,6 +52,3 @@ grow_horizontal = 2
 text = "TaikoLine"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[connection signal="tree_entered" from="." to="." method="_on_tree_entered"]
-[connection signal="process" from="." to="." method="_process"]

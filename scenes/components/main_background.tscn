@@ -1,6 +1,9 @@
 [gd_scene format=3 uid="uid://main_background"]
 
+[ext_resource type="Script" path="res://src/ui/components/main_background.gd" id="1_script"]
+
 [node name="MainBackground" type="Control"]
+script = ExtResource("1_script")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -58,6 +61,3 @@ transform = Transform2D(1, 0, 0, 1, 900, 300)
 
 [node name="Note5" type="Sprite2D" parent="FloatingNotes"]
 transform = Transform2D(1, 0, 0, 1, 200, 500)
-
-[connection signal="tree_entered" from="." to="." method="_on_tree_entered"]
-[connection signal="process" from="." to="." method="_process"]
