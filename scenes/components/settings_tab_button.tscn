@@ -1,0 +1,110 @@
+[gd_scene load_steps=3 format=3 uid="uid://settings_tab_button"]
+
+[ext_resource type="Script" path="res://src/ui/components/settings_tab_button.gd" id="1_script"]
+[ext_resource type="Theme" uid="uid://main_menu_theme" path="res://resources/ui/themes/main_menu_theme.tres" id="2_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_normal"]
+bg_color = Color(0.15, 0.1, 0.3, 0.85)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+shadow_color = Color(0, 0, 0, 0.2)
+shadow_size = 3
+shadow_offset = Vector2(1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
+bg_color = Color(0.25, 0.15, 0.45, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+shadow_color = Color(0.4, 0.2, 0.6, 0.4)
+shadow_size = 6
+shadow_offset = Vector2(0, 0)
+border_color = Color(0.5, 0.3, 0.8, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pressed"]
+bg_color = Color(0.12, 0.08, 0.25, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 2
+shadow_offset = Vector2(1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_selected"]
+bg_color = Color(0.3, 0.18, 0.5, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+shadow_color = Color(0.5, 0.3, 0.7, 0.5)
+shadow_size = 8
+shadow_offset = Vector2(0, 0)
+border_color = Color(0.7, 0.4, 1.0, 1.0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+
+[node name="SettingsTabButton" type="Button"]
+script = ExtResource("1_script")
+theme = ExtResource("2_theme")
+custom_minimum_size = Vector2(160, 45)
+theme_override_styles/normal = SubResource("StyleBoxFlat_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pressed")
+toggle_mode = true
+
+[node name="GlowEffect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -5.0
+offset_top = -5.0
+offset_right = 5.0
+offset_bottom = 5.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.4, 0.2, 0.6, 0.3)
+modulate = Color(1, 1, 1, 0.1)
+
+[node name="SelectionIndicator" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -3.0
+grow_horizontal = 2
+grow_vertical = 0
+color = Color(0.8, 0.5, 1.0, 1.0)
+modulate = Color(1, 1, 1, 0)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="IconDisplay" type="TextureRect" parent="HBoxContainer"]
+layout_mode = 2
+stretch_mode = 5
+visible = false
+
+[node name="TextDisplay" type="Label" parent="HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+vertical_alignment = 1

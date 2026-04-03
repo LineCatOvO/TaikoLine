@@ -1,13 +1,16 @@
 ## 设置界面
-## 管理游戏设置，包括音频、游戏、显示等选项
+## 管理游戏设置，包括音频、游戏、显示、系统等选项
+## 参考 Taiko no Tatsujin 设置界面设计风格
 ## 作者：TaikoLine Team
-## 日期：2026-03-27
+## 日期：2026-04-03
 
 extends Control
 
 ## 信号
 signal back_requested
 signal settings_saved
+
+## ==================== 常量定义 ====================
 
 ## 分辨率选项
 const RESOLUTIONS = [
@@ -27,54 +30,61 @@ const BUFFER_SIZES = [
 ]
 
 ## 标签页名称
-const TAB_NAMES = ["Audio", "Game", "Display", "Advanced"]
+const TAB_NAMES = ["Audio", "Game", "Display", "System"]
 
-## UI 节点引用 - 标签页
+## 场景过渡动画时长
+const TRANSITION_DURATION: float = 0.3
+
+## 入场动画延迟间隔
+const ENTER_ANIMATION_DELAY: float = 0.05
+
+## ==================== UI 节点引用 ====================
+
+## 背景
+@onready var _background: Control = $Background
+
+## 标签页按钮
 @onready var _audio_tab: Button = $MainContainer/ContentContainer/TabContainer/AudioTab
 @onready var _game_tab: Button = $MainContainer/ContentContainer/TabContainer/GameTab
 @onready var _display_tab: Button = $MainContainer/ContentContainer/TabContainer/DisplayTab
-@onready var _advanced_tab: Button = $MainContainer/ContentContainer/TabContainer/AdvancedTab
+@onready var _system_tab: Button = $MainContainer/ContentContainer/TabContainer/SystemTab
 
-## UI 节点引用 - 设置面板
-@onready var _audio_settings: VBoxContainer = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings
-@onready var _game_settings: VBoxContainer = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings
-@onready var _display_settings: VBoxContainer = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings
-@onready var _advanced_settings: VBoxContainer = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings
+## 设置面板
+@onready var _audio_settings: VBoxContainer = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings
+@onready var _game_settings: VBoxContainer = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/GameSettings
+@onready var _display_settings: VBoxContainer = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/DisplaySettings
+@onready var _system_settings: VBoxContainer = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings
 
-## UI 节点引用 - 音频设置
-@onready var _master_volume_slider: HSlider = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MasterVolumeSection/MasterVolumeHBox/MasterVolumeSlider
-@onready var _master_volume_value: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MasterVolumeSection/MasterVolumeHBox/MasterVolumeValue
-@onready var _music_volume_slider: HSlider = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MusicVolumeSection/MusicVolumeHBox/MusicVolumeSlider
-@onready var _music_volume_value: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MusicVolumeSection/MusicVolumeHBox/MusicVolumeValue
-@onready var _sfx_volume_slider: HSlider = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/SFXVolumeSection/SFXVolumeHBox/SFXVolumeSlider
-@onready var _sfx_volume_value: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/SFXVolumeSection/SFXVolumeHBox/SFXVolumeValue
+## 音频设置项
+@onready var _master_volume_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings/MasterVolumeItem
+@onready var _music_volume_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings/MusicVolumeItem
+@onready var _sfx_volume_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings/SFXVolumeItem
 
-## UI 节点引用 - 游戏设置
-@onready var _scroll_speed_slider: HSlider = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/ScrollSpeedSection/ScrollSpeedHBox/ScrollSpeedSlider
-@onready var _scroll_speed_value: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/ScrollSpeedSection/ScrollSpeedHBox/ScrollSpeedValue
-@onready var _judge_offset_slider: HSlider = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/JudgeOffsetSection/JudgeOffsetHBox/JudgeOffsetSlider
-@onready var _judge_offset_value: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/JudgeOffsetSection/JudgeOffsetHBox/JudgeOffsetValue
+## 游戏设置项
+@onready var _scroll_speed_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/GameSettings/ScrollSpeedItem
+@onready var _judge_offset_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/GameSettings/JudgeOffsetItem
 
-## UI 节点引用 - 显示设置
-@onready var _fullscreen_check: CheckBox = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/FullscreenSection/FullscreenHBox/FullscreenCheck
-@onready var _resolution_option: OptionButton = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/ResolutionSection/ResolutionOption
+## 显示设置项
+@onready var _fullscreen_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/DisplaySettings/FullscreenItem
+@onready var _resolution_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/DisplaySettings/ResolutionItem
 
-## UI 节点引用 - 高级设置
-@onready var _buffer_option: OptionButton = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/BufferSection/BufferOption
-@onready var _audio_offset_slider: HSlider = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection/AudioOffsetHBox/AudioOffsetSlider
-@onready var _audio_offset_value: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection/AudioOffsetHBox/AudioOffsetValue
-@onready var _output_device_option: OptionButton = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/OutputDeviceSection/OutputDeviceOption
-@onready var _latency_test_btn: Button = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox/LatencyTestBtn
-@onready var _latency_result_label: Label = $MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox/LatencyResultLabel
+## 系统设置项
+@onready var _audio_advanced_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/AudioAdvancedItem
+@onready var _buffer_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/BufferItem
+@onready var _audio_offset_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/AudioOffsetItem
+@onready var _output_device_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/OutputDeviceItem
+@onready var _latency_test_item: Control = $MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/LatencyTestItem
 
-## UI 节点引用 - 底部栏
+## 底部栏
 @onready var _back_btn: Button = $BottomBar/BottomHBox/BackBtn
 @onready var _reset_btn: Button = $BottomBar/BottomHBox/ResetBtn
 @onready var _save_btn: Button = $BottomBar/BottomHBox/SaveBtn
 
-## 音频节点
+## 音效节点
 @onready var _navigate_sound: AudioStreamPlayer = $NavigateSound
 @onready var _confirm_sound: AudioStreamPlayer = $ConfirmSound
+
+## ==================== 状态变量 ====================
 
 ## 当前标签页索引
 var _current_tab: int = 0
@@ -88,22 +98,21 @@ var _settings_panels: Array
 ## 设置是否已修改
 var _settings_modified: bool = false
 
-## 场景过渡动画时长
-const TRANSITION_DURATION: float = 0.3
+## 是否已初始化
+var _is_initialized: bool = false
 
+## ==================== 初始化 ====================
 
 func _ready() -> void:
 	# 初始化数组
-	_tab_buttons = [_audio_tab, _game_tab, _display_tab, _advanced_tab]
-	_settings_panels = [_audio_settings, _game_settings, _display_settings, _advanced_settings]
+	_tab_buttons = [_audio_tab, _game_tab, _display_tab, _system_tab]
+	_settings_panels = [_audio_settings, _game_settings, _display_settings, _system_settings]
 
 	# 设置按钮组
 	_setup_tab_buttons()
 
 	# 初始化选项
-	_setup_resolution_options()
-	_setup_buffer_options()
-	_setup_output_device_options()
+	_setup_options()
 
 	# 加载设置
 	_load_settings()
@@ -114,6 +123,15 @@ func _ready() -> void:
 	# 连接音频管理器信号
 	_connect_audio_manager_signals()
 
+	# 设置初始标签页
+	_select_tab(0)
+
+	# 标记已初始化
+	_is_initialized = true
+
+	# 播放入场动画
+	_play_enter_animation()
+
 
 ## 设置标签页按钮组
 func _setup_tab_buttons() -> void:
@@ -122,18 +140,24 @@ func _setup_tab_buttons() -> void:
 		btn.button_group = group
 
 
-## 初始化分辨率选项
-func _setup_resolution_options() -> void:
-	_resolution_option.clear()
-	for res in RESOLUTIONS:
-		_resolution_option.add_item(res.name)
+## 初始化选项
+func _setup_options() -> void:
+	# 设置分辨率选项
+	if _resolution_item:
+		var resolution_options: Array[String] = []
+		for res in RESOLUTIONS:
+			resolution_options.append(res.name)
+		_resolution_item.set_options(resolution_options)
 
+	# 设置缓冲区选项
+	if _buffer_item:
+		var buffer_options: Array[String] = []
+		for buf in BUFFER_SIZES:
+			buffer_options.append(buf.name)
+		_buffer_item.set_options(buffer_options)
 
-## 初始化缓冲区选项
-func _setup_buffer_options() -> void:
-	_buffer_option.clear()
-	for buf in BUFFER_SIZES:
-		_buffer_option.add_item(buf.name)
+	# 设置输出设备选项
+	_setup_output_device_options()
 
 
 ## 设置音效
@@ -154,34 +178,124 @@ func _load_sound_if_exists(path: String) -> AudioStream:
 	return null
 
 
+## ==================== 入场动画 ====================
+
+## 播放入场动画
+func _play_enter_animation() -> void:
+	# 背景入场动画
+	if _background and _background.has_method("play_enter_animation"):
+		_background.play_enter_animation()
+
+	# 标签页入场动画
+	for i in range(_tab_buttons.size()):
+		var btn = _tab_buttons[i]
+		if btn:
+			btn.modulate.a = 0.0
+			var tween = create_tween()
+			tween.set_ease(Tween.EASE_OUT)
+			tween.set_trans(Tween.TRANS_QUART)
+			await get_tree().create_timer(i * ENTER_ANIMATION_DELAY).timeout
+			tween.tween_property(btn, "modulate:a", 1.0, TRANSITION_DURATION)
+
+	# 设置项入场动画
+	await get_tree().create_timer(0.2).timeout
+	_play_settings_enter_animation(_current_tab)
+
+
+## 播放设置项入场动画
+func _play_settings_enter_animation(tab_index: int) -> void:
+	var panel = _settings_panels[tab_index]
+	if not panel:
+		return
+
+	# 获取所有设置项
+	var items = _get_settings_items(tab_index)
+	for i in range(items.size()):
+		var item = items[i]
+		if item and item.has_method("play_enter_animation"):
+			item.play_enter_animation(i * ENTER_ANIMATION_DELAY)
+
+
+## 获取设置项列表
+func _get_settings_items(tab_index: int) -> Array:
+	var items: Array = []
+
+	match tab_index:
+		0:  # Audio
+			items = [_master_volume_item, _music_volume_item, _sfx_volume_item]
+		1:  # Game
+			items = [_scroll_speed_item, _judge_offset_item]
+		2:  # Display
+			items = [_fullscreen_item, _resolution_item]
+		3:  # System
+			items = [_audio_advanced_item, _buffer_item, _audio_offset_item, _output_device_item, _latency_test_item]
+
+	return items
+
+
+## ==================== 标签页切换 ====================
+
+## 选择标签页
+func _select_tab(tab_index: int) -> void:
+	if tab_index == _current_tab:
+		return
+
+	# 隐藏当前面板
+	_settings_panels[_current_tab].visible = false
+
+	# 更新标签页按钮状态
+	for i in range(_tab_buttons.size()):
+		var btn = _tab_buttons[i]
+		if btn and btn.has_method("set_selected"):
+			btn.set_selected(i == tab_index)
+
+	# 显示新面板
+	_current_tab = tab_index
+	_settings_panels[_current_tab].visible = true
+
+	# 播放入场动画
+	_play_settings_enter_animation(tab_index)
+
+	# 播放导航音效
+	_play_navigate_sound()
+
+
+## 标签页选中回调
+func _on_tab_selected(tab_index: int) -> void:
+	_select_tab(tab_index)
+
+
+## ==================== 加载设置 ====================
+
 ## 加载设置
 func _load_settings() -> void:
 	# 音频设置
-	_master_volume_slider.value = Settings.master_volume * 100
-	_music_volume_slider.value = Settings.music_volume * 100
-	_sfx_volume_slider.value = Settings.sfx_volume * 100
+	if _master_volume_item:
+		_master_volume_item.set_value(Settings.master_volume * 100)
+	if _music_volume_item:
+		_music_volume_item.set_value(Settings.music_volume * 100)
+	if _sfx_volume_item:
+		_sfx_volume_item.set_value(Settings.sfx_volume * 100)
 
 	# 游戏设置
-	_scroll_speed_slider.value = Settings.scroll_speed
-	_judge_offset_slider.value = Settings.judge_offset
+	if _scroll_speed_item:
+		_scroll_speed_item.set_value(Settings.scroll_speed)
+	if _judge_offset_item:
+		_judge_offset_item.set_value(Settings.judge_offset)
 
 	# 显示设置
-	_fullscreen_check.button_pressed = Settings.fullscreen
-	_select_current_resolution()
+	if _fullscreen_item:
+		_fullscreen_item.set_value(float(Settings.fullscreen))
+	if _resolution_item:
+		_select_current_resolution()
 
-	# 高级设置
-	_select_current_buffer_size()
-	_audio_offset_slider.value = Settings.audio_offset
-	_select_current_output_device()
-
-	# 延迟测试结果
-	if Settings.audio_latency_result > 0:
-		_latency_result_label.text = "%.1f ms" % Settings.audio_latency_result
-	else:
-		_latency_result_label.text = "Not tested"
-
-	# 更新显示值
-	_update_all_display_values()
+	# 系统设置
+	if _buffer_item:
+		_select_current_buffer_size()
+	if _audio_offset_item:
+		_audio_offset_item.set_value(Settings.audio_offset)
+	if _output_device_item:
+		_select_current_output_device()
 
 
 ## 选择当前缓冲区大小
@@ -190,13 +304,15 @@ func _select_current_buffer_size() -> void:
 
 	for i in range(BUFFER_SIZES.size()):
 		if BUFFER_SIZES[i].value == current_size:
-			_buffer_option.select(i)
+			if _buffer_item:
+				_buffer_item.set_value(float(i))
 			return
 
 	# 默认选择 512
 	for i in range(BUFFER_SIZES.size()):
 		if BUFFER_SIZES[i].value == 512:
-			_buffer_option.select(i)
+			if _buffer_item:
+				_buffer_item.set_value(float(i))
 			return
 
 
@@ -207,63 +323,20 @@ func _select_current_resolution() -> void:
 
 	for i in range(RESOLUTIONS.size()):
 		if RESOLUTIONS[i].width == current_width and RESOLUTIONS[i].height == current_height:
-			_resolution_option.select(i)
+			if _resolution_item:
+				_resolution_item.set_value(float(i))
 			return
 
 	# 默认选择第一个
-	_resolution_option.select(0)
+	if _resolution_item:
+		_resolution_item.set_value(0.0)
 
 
-## 更新所有显示值
-func _update_all_display_values() -> void:
-	_update_volume_display(_master_volume_slider.value, _master_volume_value)
-	_update_volume_display(_music_volume_slider.value, _music_volume_value)
-	_update_volume_display(_sfx_volume_slider.value, _sfx_volume_value)
-	_update_scroll_speed_display(_scroll_speed_slider.value)
-	_update_judge_offset_display(_judge_offset_slider.value)
-	_update_audio_offset_display(_audio_offset_slider.value)
-
-
-## 更新音量显示
-func _update_volume_display(value: float, label: Label) -> void:
-	label.text = "%d%%" % int(value)
-
-
-## 更新滚动速度显示
-func _update_scroll_speed_display(value: float) -> void:
-	_scroll_speed_value.text = "%.1fx" % value
-
-
-## 更新判定偏移显示
-func _update_judge_offset_display(value: float) -> void:
-	_judge_offset_value.text = "%d ms" % int(value)
-
-
-## 更新音频偏移显示
-func _update_audio_offset_display(value: float) -> void:
-	_audio_offset_value.text = "%d ms" % int(value)
-
-
-## 标签页切换
-func _on_tab_pressed(tab_index: int) -> void:
-	if tab_index == _current_tab:
-		return
-
-	# 隐藏当前面板
-	_settings_panels[_current_tab].visible = false
-
-	# 显示新面板
-	_current_tab = tab_index
-	_settings_panels[_current_tab].visible = true
-
-	# 播放导航音效
-	_play_navigate_sound()
-
+## ==================== 设置项回调 ====================
 
 ## 主音量改变
 func _on_master_volume_changed(value: float) -> void:
 	Settings.master_volume = value / 100.0
-	_update_volume_display(value, _master_volume_value)
 	_apply_audio_settings()
 	_settings_modified = true
 
@@ -271,7 +344,6 @@ func _on_master_volume_changed(value: float) -> void:
 ## 音乐音量改变
 func _on_music_volume_changed(value: float) -> void:
 	Settings.music_volume = value / 100.0
-	_update_volume_display(value, _music_volume_value)
 	_apply_audio_settings()
 	_settings_modified = true
 
@@ -279,7 +351,6 @@ func _on_music_volume_changed(value: float) -> void:
 ## 音效音量改变
 func _on_sfx_volume_changed(value: float) -> void:
 	Settings.sfx_volume = value / 100.0
-	_update_volume_display(value, _sfx_volume_value)
 	_apply_audio_settings()
 	_settings_modified = true
 
@@ -305,19 +376,18 @@ func _apply_audio_settings() -> void:
 ## 滚动速度改变
 func _on_scroll_speed_changed(value: float) -> void:
 	Settings.scroll_speed = value
-	_update_scroll_speed_display(value)
 	_settings_modified = true
 
 
 ## 判定偏移改变
 func _on_judge_offset_changed(value: float) -> void:
 	Settings.judge_offset = value
-	_update_judge_offset_display(value)
 	_settings_modified = true
 
 
 ## 全屏切换
-func _on_fullscreen_toggled(is_fullscreen: bool) -> void:
+func _on_fullscreen_changed(value: float) -> void:
+	var is_fullscreen = bool(value)
 	Settings.fullscreen = is_fullscreen
 
 	if is_fullscreen:
@@ -330,7 +400,8 @@ func _on_fullscreen_toggled(is_fullscreen: bool) -> void:
 
 
 ## 分辨率选择
-func _on_resolution_selected(index: int) -> void:
+func _on_resolution_changed(value: float) -> void:
+	var index = int(value)
 	if index < 0 or index >= RESOLUTIONS.size():
 		return
 
@@ -346,15 +417,16 @@ func _on_resolution_selected(index: int) -> void:
 
 
 ## 音频高级选项按钮
-func _on_audio_advanced_pressed() -> void:
-	# 切换到高级设置标签页
-	_on_tab_pressed(3)
+func _on_audio_advanced_pressed(_value: float) -> void:
+	# 切换到系统设置标签页
+	_select_tab(3)
 	_tab_buttons[3].button_pressed = true
 	_play_confirm_sound()
 
 
 ## 缓冲区大小选择
-func _on_buffer_size_selected(index: int) -> void:
+func _on_buffer_changed(value: float) -> void:
+	var index = int(value)
 	if index < 0 or index >= BUFFER_SIZES.size():
 		return
 
@@ -378,9 +450,151 @@ func _apply_buffer_settings() -> void:
 ## 音频偏移改变
 func _on_audio_offset_changed(value: float) -> void:
 	Settings.audio_offset = value
-	_update_audio_offset_display(value)
 	_settings_modified = true
 
+
+## ==================== 输出设备相关 ====================
+
+## 初始化输出设备选项
+func _setup_output_device_options() -> void:
+	if not _output_device_item:
+		return
+
+	var device_options: Array[String] = []
+
+	# 检查 AudioManager 是否存在
+	if not _has_audio_manager():
+		device_options.append("Default")
+		_output_device_item.set_options(device_options)
+		return
+
+	# 获取设备列表
+	var devices = AudioManager.get_output_devices()
+	for device in devices:
+		device_options.append(device)
+
+	_output_device_item.set_options(device_options)
+
+
+## 连接音频管理器信号
+func _connect_audio_manager_signals() -> void:
+	if not _has_audio_manager():
+		return
+
+	# 连接设备列表更新信号
+	if not AudioManager.output_devices_updated.is_connected(_on_output_devices_updated):
+		AudioManager.output_devices_updated.connect(_on_output_devices_updated)
+
+	# 连接延迟测试信号
+	if not AudioManager.latency_test_started.is_connected(_on_latency_test_started):
+		AudioManager.latency_test_started.connect(_on_latency_test_started)
+
+	if not AudioManager.latency_test_completed.is_connected(_on_latency_test_completed):
+		AudioManager.latency_test_completed.connect(_on_latency_test_completed)
+
+
+## 检查 AudioManager 是否存在
+func _has_audio_manager() -> bool:
+	return get_tree().root.has_node("AudioManager")
+
+
+## 输出设备列表更新回调
+func _on_output_devices_updated(devices: Array[String]) -> void:
+	if not _output_device_item:
+		return
+
+	var device_options: Array[String] = []
+	for device in devices:
+		device_options.append(device)
+	_output_device_item.set_options(device_options)
+
+	# 重新选择当前设备
+	_select_current_output_device()
+
+
+## 选择当前输出设备
+func _select_current_output_device() -> void:
+	if not _output_device_item:
+		return
+
+	var current_device = Settings.audio_output_device
+	if current_device.is_empty():
+		current_device = "Default"
+
+	# 查找设备索引
+	var options = _output_device_item.options
+	for i in range(options.size()):
+		if options[i] == current_device:
+			_output_device_item.set_value(float(i))
+			return
+
+	# 默认选择第一个
+	_output_device_item.set_value(0.0)
+
+
+## 输出设备选择回调
+func _on_output_device_changed(value: float) -> void:
+	var index = int(value)
+	if not _output_device_item or index < 0 or index >= _output_device_item.options.size():
+		return
+
+	var device_name = _output_device_item.options[index]
+	Settings.audio_output_device = device_name if device_name != "Default" else ""
+
+	# 应用设备设置
+	if _has_audio_manager():
+		AudioManager.set_output_device(device_name)
+
+	_settings_modified = true
+
+
+## ==================== 延迟测试相关 ====================
+
+## 延迟测试按钮回调
+func _on_latency_test_pressed(_value: float) -> void:
+	if not _has_audio_manager():
+		if _latency_test_item:
+			_latency_test_item.set_description("AudioManager not available")
+		return
+
+	if AudioManager.is_latency_testing():
+		# 停止测试
+		AudioManager.stop_latency_test()
+		if _latency_test_item:
+			_latency_test_item.set_button_text("Start Test")
+			_latency_test_item.set_description("Test cancelled")
+		return
+
+	# 开始测试
+	AudioManager.start_latency_test()
+	if _latency_test_item:
+		_latency_test_item.set_button_text("Stop Test")
+		_latency_test_item.set_description("Testing...")
+
+
+## 延迟测试开始回调
+func _on_latency_test_started() -> void:
+	if _latency_test_item:
+		_latency_test_item.set_description("Testing...")
+
+
+## 延迟测试完成回调
+func _on_latency_test_completed(latency_ms: float) -> void:
+	if _latency_test_item:
+		_latency_test_item.set_button_text("Start Test")
+		_latency_test_item.set_description("Result: %.1f ms" % latency_ms)
+
+	# 保存测试结果
+	Settings.audio_latency_result = latency_ms
+	_settings_modified = true
+
+	# 显示详细结果
+	if _has_audio_manager():
+		var description = AudioManager.get_latency_description()
+		print("[Audio Latency Test] %s" % description)
+
+
+## ==================== 底部按钮 ====================
 
 ## 返回按钮
 func _on_back_pressed() -> void:
@@ -427,8 +641,8 @@ func _reset_to_defaults() -> void:
 	Settings.resolution_width = 1280
 	Settings.resolution_height = 720
 
-	# 高级设置
-	Settings.buffer_size = 512  # 默认缓冲区大小
+	# 系统设置
+	Settings.buffer_size = 512
 	Settings.audio_offset = 0.0
 	Settings.audio_output_device = ""
 	Settings.audio_latency_result = 0.0
@@ -445,6 +659,8 @@ func _reset_to_defaults() -> void:
 	_settings_modified = true
 
 
+## ==================== 场景切换 ====================
+
 ## 切换场景（带过渡动画）
 func _change_scene(scene_path: String) -> void:
 	var tween = create_tween()
@@ -456,17 +672,25 @@ func _change_scene(scene_path: String) -> void:
 	get_tree().change_scene_to_file(scene_path)
 
 
+## ==================== 音效播放 ====================
+
 ## 播放导航音效
 func _play_navigate_sound() -> void:
 	if _navigate_sound and _navigate_sound.stream:
 		_navigate_sound.play()
+	elif AudioManager:
+		AudioManager.play_ui_navigate()
 
 
 ## 播放确认音效
 func _play_confirm_sound() -> void:
 	if _confirm_sound and _confirm_sound.stream:
 		_confirm_sound.play()
+	elif AudioManager:
+		AudioManager.play_ui_confirm()
 
+
+## ==================== 输入处理 ====================
 
 ## 输入处理（键盘导航）
 func _input(event: InputEvent) -> void:
@@ -492,134 +716,4 @@ func _navigate_tab(direction: int) -> void:
 		new_tab = 0
 
 	_tab_buttons[new_tab].button_pressed = true
-	_on_tab_pressed(new_tab)
-
-
-## ========== 音频输出设备相关方法 ==========
-
-## 初始化输出设备选项
-func _setup_output_device_options() -> void:
-	_output_device_option.clear()
-
-	# 检查 AudioManager 是否存在
-	if not _has_audio_manager():
-		_output_device_option.add_item("Default")
-		_output_device_option.disabled = true
-		return
-
-	# 获取设备列表
-	var devices = AudioManager.get_output_devices()
-	for device in devices:
-		_output_device_option.add_item(device)
-
-	_output_device_option.disabled = false
-
-
-## 连接音频管理器信号
-func _connect_audio_manager_signals() -> void:
-	if not _has_audio_manager():
-		return
-
-	# 连接设备列表更新信号
-	if not AudioManager.output_devices_updated.is_connected(_on_output_devices_updated):
-		AudioManager.output_devices_updated.connect(_on_output_devices_updated)
-
-	# 连接延迟测试信号
-	if not AudioManager.latency_test_started.is_connected(_on_latency_test_started):
-		AudioManager.latency_test_started.connect(_on_latency_test_started)
-
-	if not AudioManager.latency_test_completed.is_connected(_on_latency_test_completed):
-		AudioManager.latency_test_completed.connect(_on_latency_test_completed)
-
-
-## 检查 AudioManager 是否存在
-func _has_audio_manager() -> bool:
-	return get_tree().root.has_node("AudioManager")
-
-
-## 获取 AudioManager 实例
-func _get_audio_manager():
-	if _has_audio_manager():
-		return get_tree().root.get_node("AudioManager")
-	return null
-
-
-## 输出设备列表更新回调
-func _on_output_devices_updated(devices: Array[String]) -> void:
-	_output_device_option.clear()
-	for device in devices:
-		_output_device_option.add_item(device)
-
-	# 重新选择当前设备
-	_select_current_output_device()
-
-
-## 选择当前输出设备
-func _select_current_output_device() -> void:
-	var current_device = Settings.audio_output_device
-	if current_device.is_empty():
-		current_device = "Default"
-
-	for i in range(_output_device_option.item_count):
-		if _output_device_option.get_item_text(i) == current_device:
-			_output_device_option.select(i)
-			return
-
-	# 默认选择第一个
-	_output_device_option.select(0)
-
-
-## 输出设备选择回调
-func _on_output_device_selected(index: int) -> void:
-	if index < 0 or index >= _output_device_option.item_count:
-		return
-
-	var device_name = _output_device_option.get_item_text(index)
-	Settings.audio_output_device = device_name if device_name != "Default" else ""
-
-	# 应用设备设置
-	if _has_audio_manager():
-		AudioManager.set_output_device(device_name)
-
-	_settings_modified = true
-
-
-## ========== 音频延迟测试相关方法 ==========
-
-## 延迟测试按钮回调
-func _on_latency_test_pressed() -> void:
-	if not _has_audio_manager():
-		_latency_result_label.text = "AudioManager not available"
-		return
-
-	if AudioManager.is_latency_testing():
-		# 停止测试
-		AudioManager.stop_latency_test()
-		_latency_test_btn.text = "Start Test"
-		_latency_result_label.text = "Test cancelled"
-		return
-
-	# 开始测试
-	AudioManager.start_latency_test()
-	_latency_test_btn.text = "Stop Test"
-	_latency_result_label.text = "Testing..."
-
-
-## 延迟测试开始回调
-func _on_latency_test_started() -> void:
-	_latency_result_label.text = "Testing..."
-
-
-## 延迟测试完成回调
-func _on_latency_test_completed(latency_ms: float) -> void:
-	_latency_test_btn.text = "Start Test"
-	_latency_result_label.text = "%.1f ms" % latency_ms
-
-	# 保存测试结果
-	Settings.audio_latency_result = latency_ms
-	_settings_modified = true
-
-	# 显示详细结果
-	if _has_audio_manager():
-		var description = AudioManager.get_latency_description()
-		print("[Audio Latency Test] %s" % description)
+	_select_tab(new_tab)

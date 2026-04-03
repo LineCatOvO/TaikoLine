@@ -1,8 +1,49 @@
-[gd_scene load_steps=4 format=3 uid="uid://settings_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://settings_scene"]
 
 [ext_resource type="Script" path="res://src/ui/settings.gd" id="1_settings"]
 [ext_resource type="Theme" uid="uid://main_menu_theme" path="res://resources/ui/themes/main_menu_theme.tres" id="2_theme"]
-[ext_resource type="PackedScene" uid="uid://main_background" path="res://scenes/components/main_background.tscn" id="3_background"]
+[ext_resource type="PackedScene" uid="uid://settings_background" path="res://scenes/components/settings_background.tscn" id="3_background"]
+[ext_resource type="PackedScene" uid="uid://settings_tab_button" path="res://scenes/components/settings_tab_button.tscn" id="4_tab_button"]
+[ext_resource type="PackedScene" uid="uid://settings_item" path="res://scenes/components/settings_item.tscn" id="5_settings_item"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.12, 0.08, 0.25, 0.9)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 5
+shadow_offset = Vector2(2, 2)
+border_color = Color(0.3, 0.18, 0.5, 0.5)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
+bg_color = Color(0.15, 0.1, 0.3, 0.95)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 0
+corner_radius_bottom_right = 0
+shadow_color = Color(0, 0, 0, 0.2)
+shadow_size = 3
+shadow_offset = Vector2(0, 2)
+border_color = Color(0.4, 0.25, 0.6, 0.6)
+border_width_bottom = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bottom"]
+bg_color = Color(0.12, 0.08, 0.25, 0.95)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+shadow_color = Color(0, 0, 0, 0.25)
+shadow_size = 4
+shadow_offset = Vector2(0, -2)
+border_color = Color(0.4, 0.25, 0.6, 0.6)
+border_width_top = 2
 
 [node name="Settings" type="Control"]
 layout_mode = 3
@@ -27,25 +68,42 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 40.0
-offset_top = 40.0
-offset_right = -40.0
-offset_bottom = -100.0
+offset_left = 50.0
+offset_top = 50.0
+offset_right = -50.0
+offset_bottom = -80.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 15
 
 [node name="HeaderPanel" type="PanelContainer" parent="MainContainer"]
-custom_minimum_size = Vector2(0, 60)
+custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header")
 
 [node name="HeaderHBox" type="HBoxContainer" parent="MainContainer/HeaderPanel"]
 layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="TitleIcon" type="TextureRect" parent="MainContainer/HeaderPanel/HeaderHBox"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+stretch_mode = 5
 
 [node name="TitleLabel" type="Label" parent="MainContainer/HeaderPanel/HeaderHBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 32
 text = "Settings"
+
+[node name="Spacer" type="Control" parent="MainContainer/HeaderPanel/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VersionLabel" type="Label" parent="MainContainer/HeaderPanel/HeaderHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 0.6)
+text = "v1.0"
 
 [node name="ContentContainer" type="HBoxContainer" parent="MainContainer"]
 layout_mode = 2
@@ -53,303 +111,188 @@ size_flags_vertical = 3
 theme_override_constants/separation = 20
 
 [node name="TabContainer" type="VBoxContainer" parent="MainContainer/ContentContainer"]
-custom_minimum_size = Vector2(200, 0)
+custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 8
 
-[node name="AudioTab" type="Button" parent="MainContainer/ContentContainer/TabContainer"]
-custom_minimum_size = Vector2(180, 50)
+[node name="AudioTab" parent="MainContainer/ContentContainer/TabContainer" instance=ExtResource("4_tab_button")]
 layout_mode = 2
-toggle_mode = true
-button_pressed = true
+tab_index = 0
 text = "Audio"
 
-[node name="GameTab" type="Button" parent="MainContainer/ContentContainer/TabContainer"]
-custom_minimum_size = Vector2(180, 50)
+[node name="GameTab" parent="MainContainer/ContentContainer/TabContainer" instance=ExtResource("4_tab_button")]
 layout_mode = 2
-toggle_mode = true
+tab_index = 1
 text = "Game"
 
-[node name="DisplayTab" type="Button" parent="MainContainer/ContentContainer/TabContainer"]
-custom_minimum_size = Vector2(180, 50)
+[node name="DisplayTab" parent="MainContainer/ContentContainer/TabContainer" instance=ExtResource("4_tab_button")]
 layout_mode = 2
-toggle_mode = true
+tab_index = 2
 text = "Display"
 
-[node name="AdvancedTab" type="Button" parent="MainContainer/ContentContainer/TabContainer"]
-custom_minimum_size = Vector2(180, 50)
+[node name="SystemTab" parent="MainContainer/ContentContainer/TabContainer" instance=ExtResource("4_tab_button")]
 layout_mode = 2
-toggle_mode = true
-text = "Advanced"
+tab_index = 3
+text = "System"
 
 [node name="SettingsPanel" type="PanelContainer" parent="MainContainer/ContentContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="SettingsContent" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel"]
+[node name="SettingsScrollContainer" type="ScrollContainer" parent="MainContainer/ContentContainer/SettingsPanel"]
 layout_mode = 2
-theme_override_constants/separation = 15
+horizontal_scroll_mode = 0
 
-[node name="AudioSettings" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent"]
+[node name="SettingsContent" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 25
+
+[node name="AudioSettings" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent"]
 visible = true
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="MasterVolumeSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings"]
+[node name="AudioTitle" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings"]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.9, 0.7, 1.0, 1.0)
+text = "Audio Settings"
 
-[node name="MasterVolumeLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MasterVolumeSection"]
+[node name="MasterVolumeItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-text = "Master Volume"
+title = "Master Volume"
+description = "Controls the overall volume of the game"
+item_type = 0
+slider_min = 0.0
+slider_max = 100.0
+slider_step = 1.0
+slider_default = 100.0
 
-[node name="MasterVolumeHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MasterVolumeSection"]
+[node name="MusicVolumeItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
+title = "BGM Volume"
+description = "Background music volume"
+item_type = 0
+slider_min = 0.0
+slider_max = 100.0
+slider_step = 1.0
+slider_default = 100.0
 
-[node name="MasterVolumeSlider" type="HSlider" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MasterVolumeSection/MasterVolumeHBox"]
-custom_minimum_size = Vector2(300, 30)
+[node name="SFXVolumeItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-size_flags_horizontal = 3
-min_value = 0.0
-max_value = 100.0
-step = 1.0
-value = 100.0
+title = "SE Volume"
+description = "Sound effects volume"
+item_type = 0
+slider_min = 0.0
+slider_max = 100.0
+slider_step = 1.0
+slider_default = 100.0
 
-[node name="MasterVolumeValue" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MasterVolumeSection/MasterVolumeHBox"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "100%"
-horizontal_alignment = 2
-
-[node name="MusicVolumeSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="MusicVolumeLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MusicVolumeSection"]
-layout_mode = 2
-text = "BGM Volume"
-
-[node name="MusicVolumeHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MusicVolumeSection"]
-layout_mode = 2
-
-[node name="MusicVolumeSlider" type="HSlider" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MusicVolumeSection/MusicVolumeHBox"]
-custom_minimum_size = Vector2(300, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 0.0
-max_value = 100.0
-step = 1.0
-value = 100.0
-
-[node name="MusicVolumeValue" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MusicVolumeSection/MusicVolumeHBox"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "100%"
-horizontal_alignment = 2
-
-[node name="SFXVolumeSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="SFXVolumeLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/SFXVolumeSection"]
-layout_mode = 2
-text = "SE Volume"
-
-[node name="SFXVolumeHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/SFXVolumeSection"]
-layout_mode = 2
-
-[node name="SFXVolumeSlider" type="HSlider" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/SFXVolumeSection/SFXVolumeHBox"]
-custom_minimum_size = Vector2(300, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 0.0
-max_value = 100.0
-step = 1.0
-value = 100.0
-
-[node name="SFXVolumeValue" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/SFXVolumeSection/SFXVolumeHBox"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "100%"
-horizontal_alignment = 2
-
-[node name="GameSettings" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent"]
+[node name="GameSettings" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent"]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="ScrollSpeedSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings"]
+[node name="GameTitle" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/GameSettings"]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.9, 0.7, 1.0, 1.0)
+text = "Game Settings"
 
-[node name="ScrollSpeedLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/ScrollSpeedSection"]
+[node name="ScrollSpeedItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/GameSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-text = "Scroll Speed"
+title = "Scroll Speed"
+description = "Note scroll speed (1.0x - 10.0x)"
+item_type = 0
+slider_min = 1.0
+slider_max = 10.0
+slider_step = 0.1
+slider_default = 1.0
 
-[node name="ScrollSpeedHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/ScrollSpeedSection"]
+[node name="JudgeOffsetItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/GameSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
+title = "Judge Offset"
+description = "Timing offset in milliseconds (-200 to 200)"
+item_type = 0
+slider_min = -200.0
+slider_max = 200.0
+slider_step = 1.0
+slider_default = 0.0
 
-[node name="ScrollSpeedSlider" type="HSlider" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/ScrollSpeedSection/ScrollSpeedHBox"]
-custom_minimum_size = Vector2(300, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 1.0
-max_value = 10.0
-step = 0.1
-value = 1.0
-
-[node name="ScrollSpeedValue" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/ScrollSpeedSection/ScrollSpeedHBox"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "1.0x"
-horizontal_alignment = 2
-
-[node name="JudgeOffsetSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="JudgeOffsetLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/JudgeOffsetSection"]
-layout_mode = 2
-text = "Judge Offset (ms)"
-
-[node name="JudgeOffsetHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/JudgeOffsetSection"]
-layout_mode = 2
-
-[node name="JudgeOffsetSlider" type="HSlider" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/JudgeOffsetSection/JudgeOffsetHBox"]
-custom_minimum_size = Vector2(300, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = -200.0
-max_value = 200.0
-step = 1.0
-value = 0.0
-
-[node name="JudgeOffsetValue" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/JudgeOffsetSection/JudgeOffsetHBox"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "0 ms"
-horizontal_alignment = 2
-
-[node name="DisplaySettings" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent"]
+[node name="DisplaySettings" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent"]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="FullscreenSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings"]
+[node name="DisplayTitle" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/DisplaySettings"]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.9, 0.7, 1.0, 1.0)
+text = "Display Settings"
 
-[node name="FullscreenLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/FullscreenSection"]
+[node name="FullscreenItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/DisplaySettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-text = "Fullscreen"
+title = "Fullscreen"
+description = "Enable fullscreen mode"
+item_type = 1
 
-[node name="FullscreenHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/FullscreenSection"]
+[node name="ResolutionItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/DisplaySettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
+title = "Resolution"
+description = "Screen resolution"
+item_type = 2
+options = ["1280x720 (HD)", "1600x900 (HD+)", "1920x1080 (FHD)", "2560x1440 (QHD)", "3840x2160 (4K)"]
 
-[node name="FullscreenCheck" type="CheckBox" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/FullscreenSection/FullscreenHBox"]
-layout_mode = 2
-
-[node name="ResolutionSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="ResolutionLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/ResolutionSection"]
-layout_mode = 2
-text = "Resolution"
-
-[node name="ResolutionOption" type="OptionButton" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/ResolutionSection"]
-custom_minimum_size = Vector2(200, 40)
-layout_mode = 2
-
-[node name="AdvancedSettings" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent"]
+[node name="SystemSettings" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent"]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="AudioAdvancedSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings"]
+[node name="SystemTitle" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings"]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.9, 0.7, 1.0, 1.0)
+text = "System Settings"
 
-[node name="AudioAdvancedLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioAdvancedSection"]
+[node name="AudioAdvancedItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-text = "Audio Advanced Options"
+title = "Audio Advanced Options"
+description = "Open advanced audio settings panel"
+item_type = 3
+button_text = "Open Audio Settings..."
 
-[node name="AudioAdvancedBtn" type="Button" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioAdvancedSection"]
-custom_minimum_size = Vector2(200, 40)
+[node name="BufferItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-text = "Open Audio Settings..."
+title = "Audio Buffer Size"
+description = "Lower values reduce latency but may cause audio issues"
+item_type = 2
+options = ["256 (Low Latency)", "512 (Default)", "1024 (Balanced)", "2048 (High Stability)"]
 
-[node name="BufferSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings"]
+[node name="AudioOffsetItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-theme_override_constants/separation = 5
+title = "Audio Offset"
+description = "Audio timing offset in milliseconds"
+item_type = 0
+slider_min = -100.0
+slider_max = 100.0
+slider_step = 1.0
+slider_default = 0.0
 
-[node name="BufferLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/BufferSection"]
+[node name="OutputDeviceItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-text = "Audio Buffer Size"
+title = "Audio Output Device"
+description = "Select audio output device"
+item_type = 2
+options = ["Default"]
 
-[node name="BufferOption" type="OptionButton" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/BufferSection"]
-custom_minimum_size = Vector2(200, 40)
+[node name="LatencyTestItem" parent="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings" instance=ExtResource("5_settings_item")]
 layout_mode = 2
-
-[node name="AudioOffsetSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="AudioOffsetLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection"]
-layout_mode = 2
-text = "Audio Offset (ms)"
-
-[node name="AudioOffsetHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection"]
-layout_mode = 2
-
-[node name="AudioOffsetSlider" type="HSlider" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection/AudioOffsetHBox"]
-custom_minimum_size = Vector2(300, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = -100.0
-max_value = 100.0
-step = 1.0
-value = 0.0
-
-[node name="AudioOffsetValue" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection/AudioOffsetHBox"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "0 ms"
-horizontal_alignment = 2
-
-[node name="OutputDeviceSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="OutputDeviceLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/OutputDeviceSection"]
-layout_mode = 2
-text = "Audio Output Device"
-
-[node name="OutputDeviceOption" type="OptionButton" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/OutputDeviceSection"]
-custom_minimum_size = Vector2(200, 40)
-layout_mode = 2
-
-[node name="LatencyTestSection" type="VBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="LatencyTestLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection"]
-layout_mode = 2
-text = "Audio Latency Test"
-
-[node name="LatencyTestHBox" type="HBoxContainer" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection"]
-layout_mode = 2
-
-[node name="LatencyTestBtn" type="Button" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox"]
-custom_minimum_size = Vector2(120, 40)
-layout_mode = 2
-text = "Start Test"
-
-[node name="LatencyResultLabel" type="Label" parent="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox"]
-custom_minimum_size = Vector2(100, 0)
-layout_mode = 2
-text = "Not tested"
-horizontal_alignment = 2
+title = "Audio Latency Test"
+description = "Test audio latency for optimal synchronization"
+item_type = 3
+button_text = "Start Test"
 
 [node name="BottomBar" type="PanelContainer" parent="."]
 layout_mode = 1
@@ -360,6 +303,7 @@ anchor_bottom = 1.0
 offset_top = -60.0
 grow_horizontal = 2
 grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_bottom")
 
 [node name="BottomHBox" type="HBoxContainer" parent="BottomBar"]
 layout_mode = 2
@@ -386,6 +330,8 @@ text = "Save"
 
 [node name="HintLabel" type="Label" parent="BottomBar/BottomHBox"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 0.6)
 text = "Changes are saved automatically"
 
 [node name="NavigateSound" type="AudioStreamPlayer" parent="."]
@@ -394,22 +340,22 @@ volume_db = -15.0
 [node name="ConfirmSound" type="AudioStreamPlayer" parent="."]
 volume_db = -10.0
 
-[connection signal="pressed" from="MainContainer/ContentContainer/TabContainer/AudioTab" to="." method="_on_tab_pressed" binds= [0]]
-[connection signal="pressed" from="MainContainer/ContentContainer/TabContainer/GameTab" to="." method="_on_tab_pressed" binds= [1]]
-[connection signal="pressed" from="MainContainer/ContentContainer/TabContainer/DisplayTab" to="." method="_on_tab_pressed" binds= [2]]
-[connection signal="pressed" from="MainContainer/ContentContainer/TabContainer/AdvancedTab" to="." method="_on_tab_pressed" binds= [3]]
-[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MasterVolumeSection/MasterVolumeHBox/MasterVolumeSlider" to="." method="_on_master_volume_changed"]
-[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/MusicVolumeSection/MusicVolumeHBox/MusicVolumeSlider" to="." method="_on_music_volume_changed"]
-[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AudioSettings/SFXVolumeSection/SFXVolumeHBox/SFXVolumeSlider" to="." method="_on_sfx_volume_changed"]
-[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/ScrollSpeedSection/ScrollSpeedHBox/ScrollSpeedSlider" to="." method="_on_scroll_speed_changed"]
-[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/GameSettings/JudgeOffsetSection/JudgeOffsetHBox/JudgeOffsetSlider" to="." method="_on_judge_offset_changed"]
-[connection signal="toggled" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/FullscreenSection/FullscreenHBox/FullscreenCheck" to="." method="_on_fullscreen_toggled"]
-[connection signal="item_selected" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/DisplaySettings/ResolutionSection/ResolutionOption" to="." method="_on_resolution_selected"]
-[connection signal="pressed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioAdvancedSection/AudioAdvancedBtn" to="." method="_on_audio_advanced_pressed"]
-[connection signal="item_selected" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/BufferSection/BufferOption" to="." method="_on_buffer_size_selected"]
-[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/AudioOffsetSection/AudioOffsetHBox/AudioOffsetSlider" to="." method="_on_audio_offset_changed"]
-[connection signal="item_selected" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/OutputDeviceSection/OutputDeviceOption" to="." method="_on_output_device_selected"]
-[connection signal="pressed" from="MainContainer/ContentContainer/SettingsPanel/SettingsContent/AdvancedSettings/LatencyTestSection/LatencyTestHBox/LatencyTestBtn" to="." method="_on_latency_test_pressed"]
+[connection signal="tab_selected" from="MainContainer/ContentContainer/TabContainer/AudioTab" to="." method="_on_tab_selected" binds= [0]]
+[connection signal="tab_selected" from="MainContainer/ContentContainer/TabContainer/GameTab" to="." method="_on_tab_selected" binds= [1]]
+[connection signal="tab_selected" from="MainContainer/ContentContainer/TabContainer/DisplayTab" to="." method="_on_tab_selected" binds= [2]]
+[connection signal="tab_selected" from="MainContainer/ContentContainer/TabContainer/SystemTab" to="." method="_on_tab_selected" binds= [3]]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings/MasterVolumeItem" to="." method="_on_master_volume_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings/MusicVolumeItem" to="." method="_on_music_volume_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/AudioSettings/SFXVolumeItem" to="." method="_on_sfx_volume_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/GameSettings/ScrollSpeedItem" to="." method="_on_scroll_speed_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/GameSettings/JudgeOffsetItem" to="." method="_on_judge_offset_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/DisplaySettings/FullscreenItem" to="." method="_on_fullscreen_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/DisplaySettings/ResolutionItem" to="." method="_on_resolution_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/AudioAdvancedItem" to="." method="_on_audio_advanced_pressed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/BufferItem" to="." method="_on_buffer_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/AudioOffsetItem" to="." method="_on_audio_offset_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/OutputDeviceItem" to="." method="_on_output_device_changed"]
+[connection signal="value_changed" from="MainContainer/ContentContainer/SettingsPanel/SettingsScrollContainer/SettingsContent/SystemSettings/LatencyTestItem" to="." method="_on_latency_test_pressed"]
 [connection signal="pressed" from="BottomBar/BottomHBox/BackBtn" to="." method="_on_back_pressed"]
 [connection signal="pressed" from="BottomBar/BottomHBox/ResetBtn" to="." method="_on_reset_pressed"]
 [connection signal="pressed" from="BottomBar/BottomHBox/SaveBtn" to="." method="_on_save_pressed"]
