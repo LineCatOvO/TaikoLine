@@ -505,9 +505,9 @@ func test_nm_027_handle_input_return_type() -> void:
 	var result = note_manager.handle_input("don")
 
 	# 验证返回类型
-	assert_is(result, Dictionary, "应返回字典")
+	assert_true(result is Dictionary, "应返回字典")
 	assert_has(result, "results", "应包含 results 键")
-	assert_is(result.results, Array, "results 应为数组")
+	assert_true(result.results is Array, "results 应为数组")
 
 
 # =============================================================================
@@ -627,11 +627,11 @@ func test_nm_033_switch_branch_updates_current() -> void:
 func test_nm_034_handle_input_types() -> void:
 	# 测试 don 输入
 	var result_don = note_manager.handle_input("don")
-	assert_is(result_don, Dictionary, "don 输入应返回字典")
+	assert_true(result_don is Dictionary, "don 输入应返回字典")
 
 	# 测试 ka 输入
 	var result_ka = note_manager.handle_input("ka")
-	assert_is(result_ka, Dictionary, "ka 输入应返回字典")
+	assert_true(result_ka is Dictionary, "ka 输入应返回字典")
 
 
 # =============================================================================
