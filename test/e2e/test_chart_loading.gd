@@ -46,9 +46,8 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	# 清理
-	if parser:
-		parser.free()
+	# TJAParser 是 RefCounted 对象，不需要手动释放
+	# parser.free() 会导致 "Attempted to free a RefCounted object" 错误
 	parser = null
 
 
@@ -381,8 +380,8 @@ func test_cl004_branch_switching_logic() -> void:
 
 ## CL-005-1: 测试空文件处理
 func test_cl005_empty_file_handling() -> void:
-	# 解析空字符串
-	var result = parser.parse("")
+	# 解析空字符串（使用 parse_content 方法）
+	var result = parser.parse_content("")
 
 	# 验证处理结果
 	assert_not_null(result, "应返回结果对象")
@@ -399,9 +398,9 @@ func test_cl005_invalid_file_path_handling() -> void:
 
 ## CL-005-3: 测试损坏数据处理
 func test_cl005_corrupted_data_handling() -> void:
-	# 解析损坏的数据
+	# 解析损坏的数据（使用 parse_content 方法）
 	var corrupted_data = "TITLE:Test\nBPM:invalid\n#START\n1\n#END"
-	var result = parser.parse(corrupted_data)
+	var result = parser.parse_content(corrupted_data)
 
 	# 验证处理结果（不应崩溃）
 	assert_not_null(result, "应返回结果对象")
@@ -409,9 +408,9 @@ func test_cl005_corrupted_data_handling() -> void:
 
 ## CL-005-4: 测试缺失字段处理
 func test_cl005_missing_field_handling() -> void:
-	# 解析缺少必需字段的数据
+	# 解析缺少必需字段的数据（使用 parse_content 方法）
 	var incomplete_data = "#START\n1\n#END"
-	var result = parser.parse(incomplete_data)
+	var result = parser.parse_content(incomplete_data)
 
 	# 验证处理结果
 	assert_not_null(result, "应返回结果对象")

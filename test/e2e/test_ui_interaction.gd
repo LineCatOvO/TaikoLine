@@ -388,9 +388,9 @@ func test_ui004_judge_display_update() -> void:
 		add_child_autofree(judge_display)
 		await get_tree().create_timer(0.1).timeout
 
-	# 尝试显示判定
+	# 尝试显示判定（使用 JudgeType 枚举）
 	if judge_display.has_method("show_judge"):
-		judge_display.show_judge("良")
+		judge_display.show_judge(JudgeDisplay.JudgeType.PERFECT)
 
 	# 验证不会崩溃
 	assert_true(true, "判定显示应成功")

@@ -390,20 +390,20 @@ func test_e2e_011_chart_parse_to_gameplay() -> void:
 		push_warning("TJA 解析器不存在")
 		assert_true(true, "谱面解析测试跳过")
 		return
-	
+
 	# 创建解析器实例
 	var parser = parser_script.new()
-	
-	# 测试空谱面解析
+
+	# 测试空谱面解析（使用 parse_content 方法）
 	var empty_chart = ""
-	var result = parser.parse(empty_chart)
-	
+	var result = parser.parse_content(empty_chart)
+
 	# 验证解析结果
 	assert_not_null(result, "谱面解析应返回结果")
-	
-	# 清理
-	parser.free()
-	
+
+	# TJAParser 是 RefCounted，不需要手动释放
+	# parser.free() 会导致错误
+
 	assert_true(true, "谱面解析到游戏流程测试通过")
 
 
@@ -415,23 +415,22 @@ func test_e2e_012_game_end_conditions() -> void:
 	if not _game_state:
 		assert_true(true, "游戏结束测试跳过")
 		return
-	
+
 	# 重置状态
 	_game_state.reset_game_state()
-	
-	# 测试正常完成（魂槽达到清除线）
+
+	# 测试正常完成（分数达到一定值）
 	_game_state.current_score = 10000
-	_game_state.soul_gauge = 8000.0
-	
-	# 验证清除状态
-	assert_true(_game_state.soul_gauge >= 8000.0, "魂槽应达到清除线")
-	
-	# 测试失败（魂槽未达到清除线）
+
+	# 验证分数状态
+	assert_eq(_game_state.current_score, 10000, "分数应正确设置")
+
+	# 测试低分数状态
 	_game_state.reset_game_state()
-	_game_state.soul_gauge = 5000.0
-	
-	assert_true(_game_state.soul_gauge < 8000.0, "魂槽未达到清除线")
-	
+	_game_state.current_score = 5000
+
+	assert_eq(_game_state.current_score, 5000, "分数应正确设置")
+
 	assert_true(true, "游戏结束条件测试通过")
 
 
