@@ -3,6 +3,9 @@ extends Node
 ## 皮肤管理器
 ## 管理游戏皮肤资源的加载、切换和查询
 
+## 导入 TJAData 数据结构
+const TJAData = preload("res://src/parser/tja_data.gd")
+
 ## 皮肤切换信号
 signal skin_changed(skin_name: String)
 
