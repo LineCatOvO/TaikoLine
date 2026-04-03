@@ -1,7 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://result"]
+[gd_scene load_steps=6 format=3 uid="uid://result"]
 
 [ext_resource type="Script" path="res://src/ui/result.gd" id="1_result"]
 [ext_resource type="Script" path="res://scenes/result.gd" id="2_scene"]
+[ext_resource type="PackedScene" path="res://scenes/components/result_background.tscn" id="3_bg"]
+[ext_resource type="PackedScene" path="res://scenes/components/rank_crown.tscn" id="4_crown"]
+[ext_resource type="PackedScene" path="res://scenes/components/soul_status.tscn" id="5_status"]
 
 [node name="Result" type="Control"]
 layout_mode = 3
@@ -21,6 +24,14 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.05, 0.05, 0.12, 1)
 
+[node name="DynamicBackground" parent="." instance=ExtResource("3_bg")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
 [node name="BackgroundGradient" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -28,7 +39,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.1, 0.05, 0.2, 0.5)
+color = Color(0.1, 0.05, 0.2, 0.3)
 mouse_filter = 2
 
 [node name="TopBar" type="PanelContainer" parent="."]
@@ -74,33 +85,24 @@ size_flags_horizontal = 3
 layout_mode = 2
 alignment = 1
 
-[node name="RankContainer" type="Control" parent="MainContainer/LeftPanel/VBoxContainer"]
-custom_minimum_size = Vector2(0, 200)
+[node name="RankCrownContainer" type="Control" parent="MainContainer/LeftPanel/VBoxContainer"]
+custom_minimum_size = Vector2(180, 240)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="RankLabel" type="Label" parent="MainContainer/LeftPanel/VBoxContainer/RankContainer"]
+[node name="RankCrown" parent="MainContainer/LeftPanel/VBoxContainer/RankCrownContainer" instance=ExtResource("4_crown")]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -100.0
-offset_top = -80.0
-offset_right = 100.0
-offset_bottom = 80.0
+offset_left = -90.0
+offset_top = -120.0
+offset_right = 90.0
+offset_bottom = 120.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "S"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="RankDescLabel" type="Label" parent="MainContainer/LeftPanel/VBoxContainer"]
-layout_mode = 2
-text = "RANK"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="ScoreContainer" type="HBoxContainer" parent="MainContainer/LeftPanel/VBoxContainer"]
 layout_mode = 2
@@ -115,6 +117,24 @@ horizontal_alignment = 2
 layout_mode = 2
 text = "0"
 horizontal_alignment = 2
+
+[node name="SoulStatusContainer" type="Control" parent="MainContainer/LeftPanel/VBoxContainer"]
+custom_minimum_size = Vector2(160, 120)
+layout_mode = 2
+
+[node name="SoulStatus" parent="MainContainer/LeftPanel/VBoxContainer/SoulStatusContainer" instance=ExtResource("5_status")]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -80.0
+offset_top = -60.0
+offset_right = 80.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="RightPanel" type="PanelContainer" parent="MainContainer"]
 layout_mode = 2

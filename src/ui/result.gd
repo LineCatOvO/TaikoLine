@@ -4,9 +4,10 @@ extends Control
 ## 显示游戏结束后的结果统计
 ##
 ## 设计参考：太鼓达人虹版（Taiko no Tatsujin Nijiiro）
-## - 评级显示：大号 SS/S/A/B/C/D/F，带动画
+## - 评级显示：金冠/银冠/铜冠，带动画
 ## - 统计信息：得分、准确率、良/可/不可、最大连击
-## - 魂槽状态：清除/未清除指示
+## - 魂槽状态：清除/未清除指示器
+## - 动态背景：根据评级类型显示不同颜色和粒子效果
 ## - 按钮：再玩一次、返回选歌
 
 ## 信号
@@ -36,9 +37,9 @@ const COLOR_ACCURACY := Color(0.5, 1.0, 0.5)
 @onready var _song_title_label: Label = $TopBar/VBoxContainer/SongTitleLabel
 
 ## UI节点引用 - 左侧面板
-@onready var _rank_label: Label = $MainContainer/LeftPanel/VBoxContainer/RankContainer/RankLabel
-@onready var _rank_desc_label: Label = $MainContainer/LeftPanel/VBoxContainer/RankDescLabel
+@onready var _rank_crown: RankCrown = $MainContainer/LeftPanel/VBoxContainer/RankCrownContainer/RankCrown
 @onready var _score_label: Label = $MainContainer/LeftPanel/VBoxContainer/ScoreContainer/ScoreLabel
+@onready var _soul_status: SoulStatus = $MainContainer/LeftPanel/VBoxContainer/SoulStatusContainer/SoulStatus
 
 ## UI节点引用 - 右侧面板
 @onready var _perfect_label: Label = $MainContainer/RightPanel/VBoxContainer/PerfectRow/PerfectLabel
@@ -46,6 +47,9 @@ const COLOR_ACCURACY := Color(0.5, 1.0, 0.5)
 @onready var _miss_label: Label = $MainContainer/RightPanel/VBoxContainer/MissRow/MissLabel
 @onready var _max_combo_label: Label = $MainContainer/RightPanel/VBoxContainer/ComboRow/MaxComboLabel
 @onready var _accuracy_label: Label = $MainContainer/RightPanel/VBoxContainer/AccuracyRow/AccuracyLabel
+
+## UI节点引用 - 动态背景
+@onready var _dynamic_background: ResultBackground = $DynamicBackground
 
 ## UI节点引用 - 底部栏
 @onready var _retry_button: Button = $BottomBar/HBoxContainer/RetryButton
@@ -57,12 +61,10 @@ var _result_data: Dictionary = {}
 ## 动画 Tween
 var _animation_tween: Tween
 var _score_tween: Tween
-var _rank_tween: Tween
 
 ## 动画配置
 const ANIMATION_DURATION := 0.5
 const SCORE_ANIMATION_DURATION := 1.0
-const RANK_SCALE_DURATION := 0.3
 
 
 func _ready() -> void:
@@ -82,14 +84,6 @@ func _setup_ui_style() -> void:
 	_song_title_label.add_theme_font_size_override("font_size", 20)
 	_song_title_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 
-	# 评级标签样式
-	_rank_label.add_theme_font_size_override("font_size", 120)
-	_rank_label.add_theme_color_override("font_color", COLOR_GOLD)
-
-	# 评级说明样式
-	_rank_desc_label.add_theme_font_size_override("font_size", 24)
-	_rank_desc_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-
 	# 分数样式
 	_score_label.add_theme_font_size_override("font_size", 32)
 	_score_label.add_theme_color_override("font_color", COLOR_GOLD)
@@ -98,33 +92,33 @@ func _setup_ui_style() -> void:
 	var perfect_name: Label = $MainContainer/RightPanel/VBoxContainer/PerfectRow/PerfectName
 	perfect_name.add_theme_font_size_override("font_size", 20)
 	perfect_name.add_theme_color_override("font_color", COLOR_PERFECT)
-	_perfect_label.add_theme_font_size_override("font_size", 20)
+	_perfect_label.add_theme_font_size_override("font_size", 24)
 	_perfect_label.add_theme_color_override("font_color", COLOR_PERFECT)
 
 	var good_name: Label = $MainContainer/RightPanel/VBoxContainer/GoodRow/GoodName
 	good_name.add_theme_font_size_override("font_size", 20)
 	good_name.add_theme_color_override("font_color", COLOR_GOOD)
-	_good_label.add_theme_font_size_override("font_size", 20)
+	_good_label.add_theme_font_size_override("font_size", 24)
 	_good_label.add_theme_color_override("font_color", COLOR_GOOD)
 
 	var miss_name: Label = $MainContainer/RightPanel/VBoxContainer/MissRow/MissName
 	miss_name.add_theme_font_size_override("font_size", 20)
 	miss_name.add_theme_color_override("font_color", COLOR_MISS)
-	_miss_label.add_theme_font_size_override("font_size", 20)
+	_miss_label.add_theme_font_size_override("font_size", 24)
 	_miss_label.add_theme_color_override("font_color", COLOR_MISS)
 
 	# 最大连击样式
 	var combo_name: Label = $MainContainer/RightPanel/VBoxContainer/ComboRow/ComboName
 	combo_name.add_theme_font_size_override("font_size", 20)
 	combo_name.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-	_max_combo_label.add_theme_font_size_override("font_size", 20)
+	_max_combo_label.add_theme_font_size_override("font_size", 24)
 	_max_combo_label.add_theme_color_override("font_color", COLOR_GOLD)
 
 	# 精度样式
 	var accuracy_name: Label = $MainContainer/RightPanel/VBoxContainer/AccuracyRow/AccuracyName
 	accuracy_name.add_theme_font_size_override("font_size", 20)
 	accuracy_name.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-	_accuracy_label.add_theme_font_size_override("font_size", 20)
+	_accuracy_label.add_theme_font_size_override("font_size", 24)
 	_accuracy_label.add_theme_color_override("font_color", COLOR_ACCURACY)
 
 	# 统计标题样式
@@ -156,16 +150,15 @@ func _load_result_data() -> void:
 		"good_count": GameState.judge_counts.get("可", 0),
 		"miss_count": GameState.judge_counts.get("不可", 0),
 		"song_title": GameState.current_song.get("title", "Unknown"),
-		"cleared": true,  # 简化处理
+		"cleared": true,  # 简化处理，实际应根据魂槽判断
 		"full_combo": GameState.judge_counts.get("不可", 0) == 0,
-		"dondoko_full_combo": GameState.judge_counts.get("可", 0) == 0 and GameState.judge_counts.get("不可", 0) == 0
+		"dondoko_full_combo": GameState.judge_counts.get("可", 0) == 0 and GameState.judge_counts.get("不可", 0) == 0,
+		"soul_percentage": 100.0  # 简化处理
 	}
 
 
 ## 设置内容可见性
 func _set_content_visible(visible: bool) -> void:
-	_rank_label.modulate.a = 1.0 if visible else 0.0
-	_rank_desc_label.modulate.a = 1.0 if visible else 0.0
 	_score_label.modulate.a = 1.0 if visible else 0.0
 	_perfect_label.modulate.a = 1.0 if visible else 0.0
 	_good_label.modulate.a = 1.0 if visible else 0.0
@@ -187,6 +180,10 @@ func _start_animation_sequence() -> void:
 	_max_combo_label.text = "0"
 	_accuracy_label.text = "0.00%"
 
+	# 设置动态背景类型
+	var rank_type = _calculate_rank()
+	_set_background_type(rank_type)
+
 	# 创建动画序列
 	_animation_tween = create_tween()
 	_animation_tween.set_parallel(false)
@@ -195,46 +192,97 @@ func _start_animation_sequence() -> void:
 	_animation_tween.tween_property(_title_label, "modulate:a", 1.0, 0.3)
 	_animation_tween.tween_property(_song_title_label, "modulate:a", 1.0, 0.2)
 
-	# 2. 评级显示动画
-	_animation_tween.tween_callback(_animate_rank_appear)
-	_animation_tween.tween_interval(RANK_SCALE_DURATION + 0.2)
+	# 2. 评级冠显示动画
+	_animation_tween.tween_callback(_animate_rank_crown)
+	_animation_tween.tween_interval(ANIMATION_DURATION + 0.3)
 
-	# 3. 分数滚动动画
+	# 3. 魂槽状态显示动画
+	_animation_tween.tween_callback(_animate_soul_status)
+	_animation_tween.tween_interval(ANIMATION_DURATION * 0.5)
+
+	# 4. 分数滚动动画
 	_animation_tween.tween_callback(_animate_score)
 
-	# 4. 判定统计依次显示
+	# 5. 判定统计依次显示
 	_animation_tween.tween_callback(_animate_stats)
 
-	# 5. 按钮淡入
+	# 6. 按钮淡入
 	_animation_tween.tween_interval(0.5)
 	_animation_tween.tween_callback(_animate_buttons)
 
 
-## 评级显示动画
-func _animate_rank_appear() -> void:
+## 设置动态背景类型
+func _set_background_type(rank_type: RankType) -> void:
+	var bg_type: ResultBackground.BackgroundType
+
+	match rank_type:
+		RankType.GOLD:
+			bg_type = ResultBackground.BackgroundType.GOLD
+		RankType.SILVER:
+			bg_type = ResultBackground.BackgroundType.SILVER
+		RankType.BRONZE:
+			bg_type = ResultBackground.BackgroundType.BRONZE
+		RankType.FAILED:
+			bg_type = ResultBackground.BackgroundType.FAILED
+
+	_dynamic_background.set_background_type(bg_type)
+
+
+## 评级冠显示动画
+func _animate_rank_crown() -> void:
 	var rank_type = _calculate_rank()
 	var rank_text = _get_rank_text(rank_type)
-	var rank_color = _get_rank_color(rank_type)
 
-	# 设置评级文本和颜色
-	_rank_label.text = rank_text
-	_rank_label.add_theme_color_override("font_color", rank_color)
+	# 设置评级冠类型
+	var crown_type: RankCrown.CrownType
+	match rank_type:
+		RankType.GOLD:
+			crown_type = RankCrown.CrownType.GOLD
+		RankType.SILVER:
+			crown_type = RankCrown.CrownType.SILVER
+		RankType.BRONZE:
+			crown_type = RankCrown.CrownType.BRONZE
+		RankType.FAILED:
+			crown_type = RankCrown.CrownType.FAILED
+
+	_rank_crown.set_crown_type(crown_type, rank_text)
+
+	# 播放入场动画
+	_rank_crown.play_appear_animation()
 
 	# 更新标题
 	_update_title_for_rank(rank_type)
 
-	# 缩放动画
-	_rank_label.scale = Vector2(2.0, 2.0)
-	_rank_label.modulate.a = 0.0
+	# 金冠/银冠时播放庆祝效果
+	if rank_type == RankType.GOLD or rank_type == RankType.SILVER:
+		_dynamic_background.play_celebration_effect()
+		_rank_crown.play_celebration_animation()
+	elif rank_type == RankType.FAILED:
+		_dynamic_background.play_failed_effect()
 
-	if _rank_tween:
-		_rank_tween.kill()
 
-	_rank_tween = create_tween()
-	_rank_tween.set_parallel(true)
-	_rank_tween.tween_property(_rank_label, "scale", Vector2.ONE, RANK_SCALE_DURATION).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
-	_rank_tween.tween_property(_rank_label, "modulate:a", 1.0, RANK_SCALE_DURATION * 0.5)
-	_rank_tween.tween_property(_rank_desc_label, "modulate:a", 1.0, RANK_SCALE_DURATION * 0.5)
+## 魂槽状态显示动画
+func _animate_soul_status() -> void:
+	var cleared = _result_data.get("cleared", false)
+	var soul_percentage = _result_data.get("soul_percentage", 100.0)
+
+	# 设置魂槽状态
+	var status_type: SoulStatus.StatusType
+	if cleared:
+		status_type = SoulStatus.StatusType.CLEAR
+	else:
+		status_type = SoulStatus.StatusType.FAILED
+
+	_soul_status.set_status(status_type, soul_percentage)
+
+	# 播放入场动画
+	_soul_status.play_appear_animation()
+
+	# 清除状态播放庆祝动画
+	if cleared:
+		_soul_status.play_celebration_animation()
+	else:
+		_soul_status.play_failed_animation()
 
 
 ## 分数滚动动画
@@ -351,21 +399,6 @@ func _get_rank_text(rank_type: RankType) -> String:
 			return "F"
 		_:
 			return "?"
-
-
-## 获取评级颜色
-func _get_rank_color(rank_type: RankType) -> Color:
-	match rank_type:
-		RankType.GOLD:
-			return COLOR_GOLD
-		RankType.SILVER:
-			return COLOR_SILVER
-		RankType.BRONZE:
-			return COLOR_BRONZE
-		RankType.FAILED:
-			return COLOR_FAILED
-		_:
-			return Color.WHITE
 
 
 ## 更新标题显示
