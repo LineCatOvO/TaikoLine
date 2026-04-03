@@ -18,11 +18,12 @@ const RESOLUTIONS = [
 	{"name": "3840x2160 (4K)", "width": 3840, "height": 2160},
 ]
 
-## 音频缓冲区选项
+## 音频缓冲区选项（样本数）
 const BUFFER_SIZES = [
-	{"name": "Default", "value": 0},
-	{"name": "Low Latency", "value": 1},
-	{"name": "High Stability", "value": 2},
+	{"name": "256 (Low Latency)", "value": 256},
+	{"name": "512 (Default)", "value": 512},
+	{"name": "1024 (Balanced)", "value": 1024},
+	{"name": "2048 (High Stability)", "value": 2048},
 ]
 
 ## 标签页名称
@@ -169,7 +170,7 @@ func _load_settings() -> void:
 	_select_current_resolution()
 
 	# 高级设置
-	_buffer_option.select(Settings.buffer_size)
+	_select_current_buffer_size()
 	_audio_offset_slider.value = Settings.audio_offset
 	_select_current_output_device()
 
@@ -181,6 +182,22 @@ func _load_settings() -> void:
 
 	# 更新显示值
 	_update_all_display_values()
+
+
+## 选择当前缓冲区大小
+func _select_current_buffer_size() -> void:
+	var current_size = Settings.buffer_size
+
+	for i in range(BUFFER_SIZES.size()):
+		if BUFFER_SIZES[i].value == current_size:
+			_buffer_option.select(i)
+			return
+
+	# 默认选择 512
+	for i in range(BUFFER_SIZES.size()):
+		if BUFFER_SIZES[i].value == 512:
+			_buffer_option.select(i)
+			return
 
 
 ## 选择当前分辨率
@@ -338,24 +355,24 @@ func _on_audio_advanced_pressed() -> void:
 
 ## 缓冲区大小选择
 func _on_buffer_size_selected(index: int) -> void:
-	Settings.buffer_size = index
+	if index < 0 or index >= BUFFER_SIZES.size():
+		return
+
+	Settings.buffer_size = BUFFER_SIZES[index].value
 	_apply_buffer_settings()
 	_settings_modified = true
 
 
 ## 应用缓冲区设置
 func _apply_buffer_settings() -> void:
-	# 根据缓冲区设置调整音频延迟
-	match Settings.buffer_size:
-		0:  # Default
-			# 使用 Godot 默认设置
-			pass
-		1:  # Low Latency
-			# 降低缓冲区大小以减少延迟
-			ProjectSettings.set_setting("audio/driver/output_latency", 15)
-		2:  # High Stability
-			# 增加缓冲区大小以提高稳定性
-			ProjectSettings.set_setting("audio/driver/output_latency", 50)
+	# 应用缓冲区大小设置
+	if _has_audio_manager():
+		AudioManager.apply_buffer_settings(Settings.buffer_size)
+	else:
+		# 直接设置输出延迟
+		var sample_rate = 44100
+		var latency_ms = float(Settings.buffer_size) / float(sample_rate) * 1000.0
+		ProjectSettings.set_setting("audio/driver/output_latency", latency_ms)
 
 
 ## 音频偏移改变
@@ -411,7 +428,7 @@ func _reset_to_defaults() -> void:
 	Settings.resolution_height = 720
 
 	# 高级设置
-	Settings.buffer_size = 0
+	Settings.buffer_size = 512  # 默认缓冲区大小
 	Settings.audio_offset = 0.0
 	Settings.audio_output_device = ""
 	Settings.audio_latency_result = 0.0

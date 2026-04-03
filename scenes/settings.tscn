@@ -306,8 +306,8 @@ layout_mode = 2
 custom_minimum_size = Vector2(300, 30)
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = -500.0
-max_value = 500.0
+min_value = -100.0
+max_value = 100.0
 step = 1.0
 value = 0.0
 

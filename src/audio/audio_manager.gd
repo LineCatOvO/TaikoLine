@@ -694,24 +694,39 @@ func is_latency_testing() -> bool:
 
 ## ==================== 音频缓冲区设置 ====================
 
+## 缓冲区大小选项（样本数）
+const BUFFER_SIZE_OPTIONS := [256, 512, 1024, 2048]
+
 ## 应用音频缓冲区设置
-## @param buffer_mode: 0 = Default, 1 = Low Latency, 2 = High Stability
-func apply_buffer_settings(buffer_mode: int) -> void:
-	match buffer_mode:
-		0:  # Default
-			# 使用 Godot 默认设置
-			ProjectSettings.set_setting("audio/driver/output_latency", 0)
-		1:  # Low Latency
-			# 降低缓冲区大小以减少延迟
-			ProjectSettings.set_setting("audio/driver/output_latency", 15)
-		2:  # High Stability
-			# 增加缓冲区大小以提高稳定性
-			ProjectSettings.set_setting("audio/driver/output_latency", 50)
+## @param buffer_size: 缓冲区大小（样本数），可选值：256, 512, 1024, 2048
+func apply_buffer_settings(buffer_size: int) -> void:
+	# 计算输出延迟（毫秒）
+	# 假设采样率为 44100 Hz，延迟 = buffer_size / sample_rate * 1000
+	var sample_rate = 44100
+	var latency_ms = float(buffer_size) / float(sample_rate) * 1000.0
+
+	# 设置输出延迟
+	ProjectSettings.set_setting("audio/driver/output_latency", latency_ms)
+
+	# 注意：Godot 4.x 中缓冲区大小需要通过项目设置配置
+	# 这里我们通过设置 output_latency 来间接影响缓冲行为
+	print("[AudioManager] Buffer size set to %d samples (~%.1f ms latency)" % [buffer_size, latency_ms])
 
 
-## 获取当前缓冲区延迟设置
-func get_current_buffer_latency() -> int:
-	return ProjectSettings.get_setting("audio/driver/output_latency", 0)
+## 获取当前缓冲区大小
+## @return 缓冲区大小（样本数）
+func get_current_buffer_size() -> int:
+	var latency = ProjectSettings.get_setting("audio/driver/output_latency", 0)
+	# 反向计算缓冲区大小
+	if latency <= 0:
+		return 512  # 默认值
+	var sample_rate = 44100
+	return int(latency * sample_rate / 1000.0)
+
+
+## 获取缓冲区大小选项列表
+func get_buffer_size_options() -> Array[int]:
+	return BUFFER_SIZE_OPTIONS.duplicate()
 
 
 ## 检查音频系统状态
@@ -719,7 +734,7 @@ func check_audio_system() -> Dictionary:
 	var result = {
 		"output_device": _current_output_device,
 		"device_count": _output_devices.size(),
-		"buffer_latency": get_current_buffer_latency(),
+		"buffer_size": get_current_buffer_size(),
 		"average_latency": get_average_latency(),
 		"is_testing": _is_latency_testing
 	}

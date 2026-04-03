@@ -19,9 +19,9 @@ var sfx_volume: float = 1.0
 ## 音频偏移（毫秒），用于调整音频同步
 var audio_offset: float = 0.0
 
-## 音频缓冲区大小
-## 0: Default, 1: Low Latency, 2: High Stability
-var buffer_size: int = 0
+## 音频缓冲区大小（样本数）
+## 可选值：256, 512, 1024, 2048
+var buffer_size: int = 512
 
 ## 音频输出设备名称
 ## 空字符串表示使用默认设备
@@ -104,7 +104,7 @@ func load_settings() -> void:
 	music_volume = config.get_value("audio", "music_volume", 1.0)
 	sfx_volume = config.get_value("audio", "sfx_volume", 1.0)
 	audio_offset = config.get_value("audio", "audio_offset", 0.0)
-	buffer_size = config.get_value("audio", "buffer_size", 0)
+	buffer_size = config.get_value("audio", "buffer_size", 512)
 	audio_output_device = config.get_value("audio", "audio_output_device", "")
 	audio_latency_result = config.get_value("audio", "audio_latency_result", 0.0)
 
@@ -129,7 +129,7 @@ func reset_to_defaults() -> void:
 	music_volume = 1.0
 	sfx_volume = 1.0
 	audio_offset = 0.0
-	buffer_size = 0
+	buffer_size = 512  # 默认缓冲区大小（样本数）
 	audio_output_device = ""
 	audio_latency_result = 0.0
 
