@@ -2,6 +2,7 @@ class_name TimelineView
 extends Control
 ## 时间线视图
 ## 显示小节线、音符、当前位置，支持缩放和滚动
+## 支持音符拖拽、多选、框选、右键菜单
 
 const EditorData = preload("res://src/editor/editor_data.gd")
 
@@ -9,6 +10,12 @@ const EditorData = preload("res://src/editor/editor_data.gd")
 signal measure_clicked(measure_index: int, position: float)
 signal position_changed(time: float)
 signal zoom_changed(zoom: float)
+signal note_clicked(note: EditorData.EditorNote, shift_pressed: bool)
+signal note_dragged(note: EditorData.EditorNote, new_measure: int, new_position: float)
+signal notes_selected(notes: Array)
+signal selection_cleared()
+signal playhead_dragged(time: float)
+signal context_menu_requested(position: Vector2, note: EditorData.EditorNote)
 
 ## 编辑器控制器引用
 var controller: EditorController = null
@@ -61,28 +68,409 @@ const BRANCH_MASTER_COLOR: Color = Color(0.4, 0.2, 0.4, 0.3)
 ## 分支条件标记颜色
 const BRANCH_CONDITION_COLOR: Color = Color(1.0, 0.8, 0.0, 0.8)
 
+## 选择框颜色
+const SELECTION_BOX_COLOR: Color = Color(0.3, 0.6, 1.0, 0.3)
+const SELECTION_BOX_BORDER: Color = Color(0.3, 0.6, 1.0, 0.8)
+
+## 音符点击容差（像素）
+const NOTE_CLICK_TOLERANCE: float = 10.0
+
+## 播放头点击容差（像素）
+const PLAYHEAD_CLICK_TOLERANCE: float = 8.0
+
+## 拖拽模式枚举
+enum DragMode {
+	NONE,       ## 无拖拽
+	NOTE,       ## 拖拽音符
+	SELECTION,  ## 框选
+	PLAYHEAD,   ## 拖拽播放头
+	SCROLL      ## 拖拽滚动
+}
+
+## 当前拖拽模式
+var _drag_mode: DragMode = DragMode.NONE
+
+## 正在拖拽的音符
+var _dragging_note: EditorData.EditorNote = null
+
+## 拖拽起始位置
+var _drag_start_pos: Vector2 = Vector2.ZERO
+
+## 拖拽起始时的音符位置
+var _drag_note_start: Vector2 = Vector2(-1, 0.0)
+
+## 框选起始位置
+var _selection_start: Vector2 = Vector2.ZERO
+
+## 框选结束位置
+var _selection_end: Vector2 = Vector2.ZERO
+
+## 是否正在框选
+var _is_selecting: bool = false
+
+## 是否正在拖拽播放头
+var _is_dragging_playhead: bool = false
+
+## 鼠标位置
+var _mouse_pos: Vector2 = Vector2.ZERO
+
+## 悬停的音符
+var _hovered_note: EditorData.EditorNote = null
+
+## 悬停的播放头
+var _is_hovering_playhead: bool = false
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
 
 func _gui_input(event: InputEvent) -> void:
-	# 鼠标滚轮缩放
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			zoom *= 1.1
-			accept_event()
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			zoom /= 1.1
-			accept_event()
-		elif event.button_index == MOUSE_BUTTON_LEFT:
-			_handle_click(event.position)
+	if controller == null:
+		return
 
-	# 拖拽滚动
+	# 鼠标移动
 	if event is InputEventMouseMotion:
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+		_mouse_pos = event.position
+		_handle_mouse_motion(event)
+
+	# 鼠标按钮
+	elif event is InputEventMouseButton:
+		_handle_mouse_button(event)
+
+	# 键盘事件
+	elif event is InputEventKey and event.pressed:
+		_handle_key(event)
+
+
+## 处理鼠标移动
+func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
+	# 更新悬停状态
+	_update_hover_state(event.position)
+
+	# 处理拖拽
+	match _drag_mode:
+		DragMode.NOTE:
+			_handle_note_drag(event.position)
+		DragMode.SELECTION:
+			_handle_selection_drag(event.position)
+		DragMode.PLAYHEAD:
+			_handle_playhead_drag(event.position)
+		DragMode.SCROLL:
 			scroll_offset -= event.relative.x / zoom
+
+	# 中键拖拽滚动
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+		scroll_offset -= event.relative.x / zoom
+		accept_event()
+
+	queue_redraw()
+
+
+## 处理鼠标按钮
+func _handle_mouse_button(event: InputEventMouseButton) -> void:
+	match event.button_index:
+		MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				_handle_left_press(event.position, event.shift_pressed, event.ctrl_pressed)
+			else:
+				_handle_left_release(event.position)
+		MOUSE_BUTTON_RIGHT:
+			if event.pressed:
+				_handle_right_press(event.position)
+		MOUSE_BUTTON_WHEEL_UP:
+			if event.ctrl_pressed:
+				zoom *= 1.1
+			else:
+				zoom *= 1.05
 			accept_event()
+		MOUSE_BUTTON_WHEEL_DOWN:
+			if event.ctrl_pressed:
+				zoom /= 1.1
+			else:
+				zoom /= 1.05
+			accept_event()
+
+
+## 处理左键按下
+func _handle_left_press(position: Vector2, shift_pressed: bool, ctrl_pressed: bool) -> void:
+	# 检查是否点击了播放头
+	if _is_hovering_playhead:
+		_drag_mode = DragMode.PLAYHEAD
+		_drag_start_pos = position
+		_is_dragging_playhead = true
+		accept_event()
+		return
+
+	# 检查是否点击了音符
+	var clicked_note = _get_note_at_position(position)
+	if clicked_note != null:
+		if shift_pressed:
+			# Shift+点击：添加到选择
+			controller.select_note(clicked_note, true)
+		elif ctrl_pressed:
+			# Ctrl+点击：切换选择
+			if clicked_note.selected:
+				controller.deselect_note(clicked_note)
+			else:
+				controller.select_note(clicked_note, true)
+		else:
+			# 普通点击：选择并开始拖拽
+			if not clicked_note.selected:
+				controller.deselect_all()
+				controller.select_note(clicked_note, false)
+			_start_note_drag(clicked_note, position)
+		note_clicked.emit(clicked_note, shift_pressed)
+		accept_event()
+		return
+
+	# 检查是否在时间线区域（设置播放位置）
+	if position.y < TIMELINE_HEIGHT:
+		var time = _x_to_time(position.x)
+		playhead_dragged.emit(time)
+		accept_event()
+		return
+
+	# 开始框选
+	if shift_pressed or ctrl_pressed:
+		# Shift/Ctrl + 空白区域：开始框选
+		_start_selection(position)
+		accept_event()
+		return
+
+	# 普通点击空白区域：取消选择并添加音符
+	controller.deselect_all()
+	selection_cleared.emit()
+	_handle_click(position)
+	accept_event()
+
+
+## 处理左键释放
+func _handle_left_release(position: Vector2) -> void:
+	match _drag_mode:
+		DragMode.NOTE:
+			_end_note_drag(position)
+		DragMode.SELECTION:
+			_end_selection()
+		DragMode.PLAYHEAD:
+			_is_dragging_playhead = false
+
+	_drag_mode = DragMode.NONE
+	queue_redraw()
+
+
+## 处理右键按下
+func _handle_right_press(position: Vector2) -> void:
+	var clicked_note = _get_note_at_position(position)
+	context_menu_requested.emit(position, clicked_note)
+	accept_event()
+
+
+## 处理键盘事件
+func _handle_key(event: InputEventKey) -> void:
+	match event.keycode:
+		KEY_A:
+			if event.ctrl_pressed:
+				# Ctrl+A: 全选
+				controller.select_all()
+				accept_event()
+		KEY_DELETE:
+			# Delete: 删除选中音符
+			controller.delete_selected()
+			accept_event()
+		KEY_ESCAPE:
+			# Escape: 取消选择
+			controller.deselect_all()
+			_drag_mode = DragMode.NONE
+			accept_event()
+
+
+## 更新悬停状态
+func _update_hover_state(position: Vector2) -> void:
+	# 检查是否悬停在播放头上
+	var playhead_x = _time_to_x(play_position)
+	_is_hovering_playhead = abs(position.x - playhead_x) < PLAYHEAD_CLICK_TOLERANCE
+
+	# 检查是否悬停在音符上
+	_hovered_note = _get_note_at_position(position)
+
+	# 更新鼠标光标
+	if _is_hovering_playhead or _hovered_note != null:
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	else:
+		mouse_default_cursor_shape = Control.CURSOR_ARROW
+
+
+## 开始音符拖拽
+func _start_note_drag(note: EditorData.EditorNote, position: Vector2) -> void:
+	_drag_mode = DragMode.NOTE
+	_dragging_note = note
+	_drag_start_pos = position
+	_drag_note_start = Vector2(note.measure_index, note.position)
+
+
+## 处理音符拖拽
+func _handle_note_drag(position: Vector2) -> void:
+	if _dragging_note == null:
+		return
+
+	# 计算新位置
+	var new_pos = _screen_to_note_position(position)
+	if new_pos.x < 0:
+		return
+
+	# 应用网格吸附
+	if snap_enabled:
+		new_pos.y = snap_position_to_grid(new_pos.y)
+
+	# 实时更新预览（不实际移动，只重绘）
+	queue_redraw()
+
+
+## 结束音符拖拽
+func _end_note_drag(position: Vector2) -> void:
+	if _dragging_note == null:
+		return
+
+	var new_pos = _screen_to_note_position(position)
+	if new_pos.x < 0:
+		_dragging_note = null
+		return
+
+	# 应用网格吸附
+	if snap_enabled:
+		new_pos.y = snap_position_to_grid(new_pos.y)
+
+	# 检查位置是否改变
+	if new_pos.x != _drag_note_start.x or abs(new_pos.y - _drag_note_start.y) > 0.001:
+		# 移动音符
+		controller.move_note(_dragging_note, int(new_pos.x), new_pos.y)
+		note_dragged.emit(_dragging_note, int(new_pos.x), new_pos.y)
+
+	_dragging_note = null
+
+
+## 开始框选
+func _start_selection(position: Vector2) -> void:
+	_drag_mode = DragMode.SELECTION
+	_is_selecting = true
+	_selection_start = position
+	_selection_end = position
+
+
+## 处理框选拖拽
+func _handle_selection_drag(position: Vector2) -> void:
+	_selection_end = position
+	_select_notes_in_rect(_get_selection_rect())
+	queue_redraw()
+
+
+## 结束框选
+func _end_selection() -> void:
+	_is_selecting = false
+	_drag_mode = DragMode.NONE
+
+
+## 处理播放头拖拽
+func _handle_playhead_drag(position: Vector2) -> void:
+	var time = _x_to_time(position.x)
+	playhead_dragged.emit(time)
+	position_changed.emit(time)
+
+
+## 获取选择框矩形
+func _get_selection_rect() -> Rect2:
+	var min_x = min(_selection_start.x, _selection_end.x)
+	var min_y = min(_selection_start.y, _selection_end.y)
+	var max_x = max(_selection_start.x, _selection_end.x)
+	var max_y = max(_selection_start.y, _selection_end.y)
+	return Rect2(min_x, min_y, max_x - min_x, max_y - min_y)
+
+
+## 选择框内的音符
+func _select_notes_in_rect(rect: Rect2) -> void:
+	if controller == null:
+		return
+
+	var course = controller.get_current_course()
+	if course == null:
+		return
+
+	var measure_width = MEASURE_WIDTH * zoom
+	var selected: Array = []
+
+	for measure in course.measures:
+		var measure_x = measure.index * measure_width - scroll_offset
+		if measure_x > rect.end.x:
+			break
+		if measure_x + measure_width < rect.position.x:
+			continue
+
+		for note in measure.notes:
+			var note_x = measure_x + note.position * measure_width
+			var note_y = TIMELINE_HEIGHT + 10 + NOTE_HEIGHT / 2
+
+			if rect.has_point(Vector2(note_x, note_y)):
+				selected.append(note)
+				note.selected = true
+			else:
+				note.selected = false
+
+	controller._on_selection_changed(selected)
+	notes_selected.emit(selected)
+
+
+## 获取指定位置的音符
+func _get_note_at_position(screen_pos: Vector2) -> EditorData.EditorNote:
+	if controller == null:
+		return null
+
+	var course = controller.get_current_course()
+	if course == null:
+		return null
+
+	var measure_width = MEASURE_WIDTH * zoom
+	var note_width = measure_width * 0.1
+
+	for measure in course.measures:
+		var measure_x = measure.index * measure_width - scroll_offset
+		if measure_x > screen_pos.x + note_width:
+			break
+		if measure_x + measure_width < screen_pos.x - note_width:
+			continue
+
+		for note in measure.notes:
+			var note_x = measure_x + note.position * measure_width
+			var note_y = TIMELINE_HEIGHT + 10
+
+			# 检查点击是否在音符范围内
+			if abs(screen_pos.x - note_x) < note_width / 2 + NOTE_CLICK_TOLERANCE:
+				if screen_pos.y >= note_y and screen_pos.y <= note_y + NOTE_HEIGHT + NOTE_CLICK_TOLERANCE:
+					return note
+
+	return null
+
+
+## 屏幕坐标转音符位置
+func _screen_to_note_position(screen_pos: Vector2) -> Vector2:
+	# 返回 Vector2(measure_index, position_in_measure)
+	if controller == null:
+		return Vector2(-1, 0.0)
+
+	var course = controller.get_current_course()
+	if course == null:
+		return Vector2(-1, 0.0)
+
+	var measure_width = MEASURE_WIDTH * zoom
+	var adjusted_x = screen_pos.x + scroll_offset
+	var measure_index = int(adjusted_x / measure_width)
+	var position_in_measure = (adjusted_x - measure_index * measure_width) / measure_width
+
+	# 限制范围
+	measure_index = clamp(measure_index, 0, course.measures.size() - 1)
+	position_in_measure = clamp(position_in_measure, 0.0, 1.0)
+
+	return Vector2(measure_index, position_in_measure)
 
 
 ## 处理点击
@@ -136,9 +524,20 @@ func _draw() -> void:
 		var measure = course.measures[i]
 		_draw_measure(measure, x, measure_width)
 
-	# 绘制播放位置线
-	if is_playing:
-		_draw_playhead()
+	# 绘制播放位置线（始终显示，不只是播放时）
+	_draw_playhead()
+
+	# 绘制拖拽预览
+	if _drag_mode == DragMode.NOTE and _dragging_note != null:
+		_draw_drag_preview()
+
+	# 绘制框选框
+	if _is_selecting:
+		_draw_selection_box()
+
+	# 绘制悬停提示
+	if _hovered_note != null and _drag_mode == DragMode.NONE:
+		_draw_note_tooltip(_hovered_note)
 
 
 ## 绘制时间线
@@ -488,3 +887,111 @@ func _draw_branch_condition_marker(measure_index: int, x: float, y: float, width
 			# 阈值信息
 			var threshold_text = "N:%.0f E:%.0f" % [condition.normal_threshold, condition.expert_threshold]
 			draw_string(font, Vector2(x + 5, y + 35), threshold_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0.3, 0.3, 0.3))
+
+
+## 绘制拖拽预览
+func _draw_drag_preview() -> void:
+	if _dragging_note == null:
+		return
+
+	var new_pos = _screen_to_note_position(_mouse_pos)
+	if new_pos.x < 0:
+		return
+
+	# 应用网格吸附
+	if snap_enabled:
+		new_pos.y = snap_position_to_grid(new_pos.y)
+
+	var measure_width = MEASURE_WIDTH * zoom
+	var note_width = measure_width * 0.1
+
+	# 计算预览位置
+	var preview_x = new_pos.x * measure_width - scroll_offset + new_pos.y * measure_width
+	var preview_y = TIMELINE_HEIGHT + 10
+
+	# 绘制半透明预览音符
+	var color = _get_note_color(_dragging_note.note_type)
+	color.a = 0.5
+	var rect = Rect2(preview_x - note_width / 2, preview_y, note_width, NOTE_HEIGHT)
+
+	# 绘制虚线边框
+	draw_rect(rect, color, false, 2.0)
+
+	# 绘制从原位置到新位置的连线
+	var original_x = _drag_note_start.x * measure_width - scroll_offset + _drag_note_start.y * measure_width
+	draw_line(
+		Vector2(original_x, preview_y + NOTE_HEIGHT / 2),
+		Vector2(preview_x, preview_y + NOTE_HEIGHT / 2),
+		Color(1.0, 1.0, 0.0, 0.5),
+		1.0
+	)
+
+
+## 绘制框选框
+func _draw_selection_box() -> void:
+	var rect = _get_selection_rect()
+
+	# 填充
+	draw_rect(rect, SELECTION_BOX_COLOR)
+
+	# 边框
+	draw_rect(rect, SELECTION_BOX_BORDER, false, 2.0)
+
+
+## 绘制音符悬停提示
+func _draw_note_tooltip(note: EditorData.EditorNote) -> void:
+	if note == null:
+		return
+
+	var measure_width = MEASURE_WIDTH * zoom
+	var note_x = note.measure_index * measure_width - scroll_offset + note.position * measure_width
+	var note_y = TIMELINE_HEIGHT + 10 + NOTE_HEIGHT
+
+	# 提示框位置
+	var tooltip_x = note_x + 20
+	var tooltip_y = note_y - 30
+
+	# 提示文字
+	var text = "%s\n小节: %d\n位置: %.3f" % [
+		EditorData.get_note_type_name(note.note_type),
+		note.measure_index + 1,
+		note.position
+	]
+
+	# 计算提示框大小
+	var font = ThemeDB.fallback_font
+	var lines = text.split("\n")
+	var max_width = 0.0
+	for line in lines:
+		var line_width = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		if line_width > max_width:
+			max_width = line_width
+
+	var tooltip_width = max_width + 10
+	var tooltip_height = lines.size() * 16 + 8
+
+	# 绘制提示框背景
+	var tooltip_rect = Rect2(tooltip_x, tooltip_y, tooltip_width, tooltip_height)
+	draw_rect(tooltip_rect, Color(0.1, 0.1, 0.1, 0.9))
+	draw_rect(tooltip_rect, Color(0.5, 0.5, 0.5), false, 1.0)
+
+	# 绘制提示文字
+	for i in range(lines.size()):
+		draw_string(font, Vector2(tooltip_x + 5, tooltip_y + 14 + i * 16), lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+
+
+## 检查控制器是否有分支
+func has_branch() -> bool:
+	if controller == null:
+		return false
+	var course = controller.get_current_course()
+	if course == null:
+		return false
+	return course.has_branch
+
+
+## 获取当前分支
+func get_current_branch() -> int:
+	if controller == null:
+		return 0
+	return controller.get_current_branch()

@@ -590,6 +590,23 @@ func deselect_all() -> void:
 	selection_changed.emit(selected_notes)
 
 
+## 取消选择单个音符
+func deselect_note(note: EditorData.EditorNote) -> void:
+	var idx = selected_notes.find(note)
+	if idx >= 0:
+		note.selected = false
+		selected_notes.remove_at(idx)
+		selection_changed.emit(selected_notes)
+
+
+## 选择变化内部回调（用于框选）
+func _on_selection_changed(notes: Array) -> void:
+	selected_notes.clear()
+	for note in notes:
+		selected_notes.append(note)
+	selection_changed.emit(selected_notes)
+
+
 ## 全选
 func select_all() -> void:
 	if project == null:

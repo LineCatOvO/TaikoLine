@@ -26,6 +26,7 @@ var preview_controller: PreviewController = null
 @onready var timeline_container: ScrollContainer = $VBoxContainer/TimelineContainer
 @onready var timeline_view: TimelineView = $VBoxContainer/TimelineContainer/TimelineView
 @onready var property_panel: VBoxContainer = $VBoxContainer/HSplitContainer/PropertyPanel
+@onready var measure_list: Tree = $VBoxContainer/HSplitContainer/MeasureList
 
 ## 播放控制工具栏
 var playback_toolbar: HBoxContainer = null
@@ -154,6 +155,16 @@ func _connect_signals() -> void:
 
 	if timeline_view:
 		timeline_view.measure_clicked.connect(_on_measure_clicked)
+		timeline_view.note_clicked.connect(_on_note_clicked)
+		timeline_view.note_dragged.connect(_on_note_dragged)
+		timeline_view.notes_selected.connect(_on_notes_selected)
+		timeline_view.selection_cleared.connect(_on_selection_cleared)
+		timeline_view.playhead_dragged.connect(_on_playhead_dragged)
+		timeline_view.context_menu_requested.connect(_on_context_menu_requested)
+
+	# 连接小节列表信号
+	if measure_list:
+		measure_list.item_selected.connect(_on_measure_list_item_selected)
 
 	# 连接预览控制器信号
 	if preview_controller:
@@ -515,6 +526,7 @@ func _on_note_button_pressed(note_type: EditorData.NoteType) -> void:
 func _on_data_changed() -> void:
 	is_modified = controller.is_modified()
 	_update_ui()
+	_update_measure_list()
 
 
 ## 选择变化回调
@@ -528,6 +540,10 @@ func _on_project_loaded(project: EditorData.EditorProject) -> void:
 	# 更新时间线视图
 	if timeline_view:
 		timeline_view.set_controller(controller)
+	# 更新小节列表
+	_update_measure_list()
+	# 更新UI
+	_update_ui()
 
 
 ## 项目保存回调
@@ -1857,3 +1873,147 @@ func _add_stat_item(parent: Container, name: String, value: String) -> void:
 	var value_label = Label.new()
 	value_label.text = value
 	hbox.add_child(value_label)
+
+
+## ========== 小节列表相关方法 ==========
+
+## 更新小节列表
+func _update_measure_list() -> void:
+	if measure_list == null or controller == null:
+		return
+
+	var course = controller.get_current_course()
+	if course == null:
+		return
+
+	# 清空列表
+	measure_list.clear()
+
+	# 创建根节点
+	var root = measure_list.create_item()
+
+	# 添加小节项
+	for i in range(course.measures.size()):
+		var measure = course.measures[i]
+		var item = measure_list.create_item(root)
+
+		# 小节编号
+		item.set_text(0, str(i + 1))
+
+		# BPM
+		item.set_text(1, "%.1f" % measure.bpm)
+
+		# 音符数
+		item.set_text(2, str(measure.notes.size()))
+
+		# 设置元数据
+		item.set_metadata(0, i)
+
+		# Go-Go Time 标记
+		if measure.is_gogo:
+			item.set_custom_color(0, Color(1.0, 0.8, 0.2))
+
+
+## 小节列表项选中回调
+func _on_measure_list_item_selected() -> void:
+	if measure_list == null or controller == null:
+		return
+
+	var selected = measure_list.get_selected()
+	if selected == null:
+		return
+
+	var measure_index = selected.get_metadata(0)
+	if measure_index == null:
+		return
+
+	# 滚动时间轴到选中小节
+	if timeline_view:
+		timeline_view.scroll_to_measure(measure_index)
+
+	# 更新属性面板显示小节属性
+	selected_measure_index = measure_index
+	_update_measure_properties(measure_index)
+
+
+## ========== 时间轴视图新信号回调 ==========
+
+## 音符点击回调
+func _on_note_clicked(note: EditorData.EditorNote, shift_pressed: bool) -> void:
+	# 更新属性面板
+	_update_property_panel([note] if note != null else [])
+
+
+## 音符拖拽回调
+func _on_note_dragged(note: EditorData.EditorNote, new_measure: int, new_position: float) -> void:
+	# 更新UI
+	_update_ui()
+
+
+## 多选音符回调
+func _on_notes_selected(notes: Array) -> void:
+	_update_property_panel(notes)
+
+
+## 选择清除回调
+func _on_selection_cleared() -> void:
+	_update_property_panel([])
+
+
+## 播放头拖拽回调
+func _on_playhead_dragged(time: float) -> void:
+	if preview_controller:
+		preview_controller.set_position(time)
+
+
+## 右键菜单回调
+func _on_context_menu_requested(position: Vector2, note: EditorData.EditorNote) -> void:
+	# 创建右键菜单
+	var popup = PopupMenu.new()
+	popup.name = "ContextMenu"
+
+	if note != null:
+		# 音符右键菜单
+		popup.add_item("删除", 0)
+		popup.add_item("更改类型", 1)
+		popup.add_separator()
+		popup.add_item("复制", 2)
+		popup.add_item("剪切", 3)
+	else:
+		# 空白区域右键菜单
+		popup.add_item("添加音符", 10)
+		popup.add_separator()
+		popup.add_item("粘贴", 11)
+		popup.add_item("全选", 12)
+
+	popup.id_pressed.connect(func(id): _on_context_menu_item_pressed(id, note, position))
+	add_child(popup)
+	popup.position = get_global_mouse_position()
+	popup.popup()
+	popup.popup_hide.connect(func(): popup.queue_free())
+
+
+## 右键菜单项回调
+func _on_context_menu_item_pressed(id: int, note: EditorData.EditorNote, position: Vector2) -> void:
+	match id:
+		0:  # 删除
+			if note != null:
+				controller.remove_note(note)
+		1:  # 更改类型
+			# TODO: 显示类型选择对话框
+			pass
+		2:  # 复制
+			controller.copy_selected()
+		3:  # 剪切
+			controller.copy_selected()
+			controller.delete_selected()
+		10: # 添加音符
+			# 在点击位置添加音符
+			var note_pos = timeline_view._screen_to_note_position(position)
+			if note_pos.x >= 0:
+				controller.add_note(int(note_pos.x), note_pos.y)
+		11: # 粘贴
+			# TODO: 在当前位置粘贴
+			pass
+		12: # 全选
+			controller.select_all()
