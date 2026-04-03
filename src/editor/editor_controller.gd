@@ -51,13 +51,16 @@ var selected_notes: Array[EditorData.EditorNote] = []
 ## 当前选中的音符类型（用于放置）
 var current_note_type: EditorData.NoteType = EditorData.NoteType.DON
 
-## 撤销栈
+## 撤销栈（保留用于向后兼容，实际使用 undo_redo_manager）
 var _undo_stack: Array[EditorData.EditorCommand] = []
-## 重做栈
+## 重做栈（保留用于向后兼容，实际使用 undo_redo_manager）
 var _redo_stack: Array[EditorData.EditorCommand] = []
 
 ## 最大撤销步数
 const MAX_UNDO_STEPS: int = 100
+
+## 是否使用增强版撤销/重做管理器
+var _use_enhanced_undo_redo: bool = true
 
 ## 复制缓冲区
 var _clipboard: Array[EditorData.EditorNote] = []
@@ -103,6 +106,9 @@ func _create_new_project() -> void:
 	selected_notes.clear()
 	_undo_stack.clear()
 	_redo_stack.clear()
+	# 清空增强版撤销/重做管理器
+	if undo_redo_manager != null:
+		undo_redo_manager.clear()
 	current_state = EditorState.IDLE
 
 
@@ -681,16 +687,29 @@ func paste(target_measure: int, target_position: float) -> void:
 
 ## 执行命令（添加到撤销栈）
 func _execute_command(cmd: EditorData.EditorCommand) -> void:
-	_undo_stack.append(cmd)
-	_redo_stack.clear()
+	# 使用增强版撤销/重做管理器
+	if _use_enhanced_undo_redo and undo_redo_manager != null:
+		undo_redo_manager.execute_command(cmd)
+	else:
+		# 向后兼容：使用简单撤销栈
+		_undo_stack.append(cmd)
+		_redo_stack.clear()
 
-	# 限制撤销栈大小
-	if _undo_stack.size() > MAX_UNDO_STEPS:
-		_undo_stack.remove_at(0)
+		# 限制撤销栈大小
+		if _undo_stack.size() > MAX_UNDO_STEPS:
+			_undo_stack.remove_at(0)
 
 
 ## 撤销
 func undo() -> bool:
+	# 使用增强版撤销/重做管理器
+	if _use_enhanced_undo_redo and undo_redo_manager != null:
+		var result = undo_redo_manager.undo()
+		if result:
+			data_changed.emit()
+		return result
+
+	# 向后兼容：使用简单撤销栈
 	if _undo_stack.is_empty():
 		return false
 
@@ -704,6 +723,14 @@ func undo() -> bool:
 
 ## 重做
 func redo() -> bool:
+	# 使用增强版撤销/重做管理器
+	if _use_enhanced_undo_redo and undo_redo_manager != null:
+		var result = undo_redo_manager.redo()
+		if result:
+			data_changed.emit()
+		return result
+
+	# 向后兼容：使用简单重做栈
 	if _redo_stack.is_empty():
 		return false
 
@@ -790,11 +817,17 @@ func _redo_command(cmd: EditorData.EditorCommand) -> void:
 
 ## 是否可以撤销
 func can_undo() -> bool:
+	# 使用增强版撤销/重做管理器
+	if _use_enhanced_undo_redo and undo_redo_manager != null:
+		return undo_redo_manager.can_undo()
 	return not _undo_stack.is_empty()
 
 
 ## 是否可以重做
 func can_redo() -> bool:
+	# 使用增强版撤销/重做管理器
+	if _use_enhanced_undo_redo and undo_redo_manager != null:
+		return undo_redo_manager.can_redo()
 	return not _redo_stack.is_empty()
 
 

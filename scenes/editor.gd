@@ -1058,10 +1058,13 @@ func _on_playback_started() -> void:
 		pause_button.disabled = false
 	if stop_button:
 		stop_button.disabled = false
-	
+
 	# 更新时间线视图
 	if timeline_view:
 		timeline_view.set_playing(true)
+
+	# 同步节拍器
+	_sync_metronome_to_playback()
 
 
 ## 播放停止回调
@@ -1073,14 +1076,18 @@ func _on_playback_stopped() -> void:
 		pause_button.disabled = true
 	if stop_button:
 		stop_button.disabled = true
-	
+
 	# 更新时间线视图
 	if timeline_view:
 		timeline_view.set_playing(false)
 		timeline_view.set_play_position(0.0)
-	
+
 	# 更新位置显示
 	_update_position_display(0.0)
+
+	# 停止节拍器
+	if metronome:
+		metronome.stop()
 
 
 ## 播放暂停回调
@@ -1091,15 +1098,23 @@ func _on_playback_paused() -> void:
 	if pause_button:
 		pause_button.disabled = true
 
+	# 暂停节拍器
+	if metronome:
+		metronome.pause()
+
 
 ## 播放位置变更回调
 func _on_playback_position_changed(time: float) -> void:
 	# 更新时间线视图
 	if timeline_view:
 		timeline_view.set_play_position(time)
-	
+
 	# 更新位置显示
 	_update_position_display(time)
+
+	# 同步节拍器位置
+	if metronome and metronome.enabled and metronome.is_playing:
+		metronome.sync_to_time(time)
 
 
 ## 播放速度变更回调
@@ -1297,6 +1312,115 @@ func _setup_metronome() -> void:
 	metronome.name = "Metronome"
 	metronome.enabled = false
 	add_child(metronome)
+
+	# 连接节拍器信号
+	if metronome:
+		metronome.beat_occurred.connect(_on_metronome_beat)
+
+	# 设置节拍器 UI 控制面板
+	_setup_metronome_ui()
+
+
+## 设置节拍器 UI 控制面板
+func _setup_metronome_ui() -> void:
+	# 创建节拍器控制容器
+	var metronome_container = HBoxContainer.new()
+	metronome_container.name = "MetronomeControls"
+
+	# 添加分隔符
+	var separator1 = VSeparator.new()
+	metronome_container.add_child(separator1)
+
+	# 节拍器标签
+	var metronome_label = Label.new()
+	metronome_label.text = "节拍器:"
+	metronome_container.add_child(metronome_label)
+
+	# 节拍器启用/禁用按钮
+	var metronome_toggle = Button.new()
+	metronome_toggle.text = "OFF"
+	metronome_toggle.tooltip_text = "启用/禁用节拍器"
+	metronome_toggle.toggle_mode = true
+	metronome_toggle.button_pressed = false
+	metronome_toggle.toggled.connect(_on_metronome_toggle)
+	metronome_container.add_child(metronome_toggle)
+
+	# 节拍器音量控制
+	var volume_label = Label.new()
+	volume_label.text = "音量:"
+	metronome_container.add_child(volume_label)
+
+	var metronome_volume = HSlider.new()
+	metronome_volume.min_value = -30.0
+	metronome_volume.max_value = 6.0
+	metronome_volume.value = -6.0
+	metronome_volume.step = 1.0
+	metronome_volume.custom_minimum_size.x = 60
+	metronome_volume.tooltip_text = "调整节拍器音量"
+	metronome_volume.value_changed.connect(_on_metronome_volume_changed)
+	metronome_container.add_child(metronome_volume)
+
+	# 将节拍器控制添加到工具栏
+	toolbar.add_child(metronome_container)
+
+
+## 同步节拍器到播放状态
+func _sync_metronome_to_playback() -> void:
+	if metronome == null or controller == null:
+		return
+
+	# 获取当前小节的 BPM
+	var project = controller.get_project()
+	if project == null:
+		return
+
+	var course = project.get_current_course()
+	if course == null:
+		return
+
+	# 获取当前播放位置对应的小节
+	var current_time = preview_controller.current_position if preview_controller else 0.0
+	var measure_index = preview_controller.get_current_measure_index() if preview_controller else 0
+
+	if measure_index >= 0 and measure_index < course.measures.size():
+		var measure = course.measures[measure_index]
+		metronome.set_bpm(measure.bpm)
+		metronome.set_time_signature(int(measure.time_signature.x), int(measure.time_signature.y))
+
+	# 同步节拍器时间并启动
+	metronome.sync_to_time(current_time)
+	if metronome.enabled:
+		metronome.start()
+
+
+## 节拍器启用/禁用回调
+func _on_metronome_toggle(enabled: bool) -> void:
+	if metronome:
+		metronome.enabled = enabled
+
+		# 更新按钮文本
+		var toggle_btn = toolbar.get_node_or_null("MetronomeControls").get_child(2) if toolbar.get_node_or_null("MetronomeControls") else null
+		if toggle_btn and toggle_btn is Button:
+			toggle_btn.text = "ON" if enabled else "OFF"
+
+		# 如果正在播放，启动/停止节拍器
+		if preview_controller and preview_controller.is_playing():
+			if enabled:
+				_sync_metronome_to_playback()
+			else:
+				metronome.stop()
+
+
+## 节拍器音量变更回调
+func _on_metronome_volume_changed(value: float) -> void:
+	if metronome:
+		metronome.set_volume(value)
+
+
+## 节拍器节拍回调
+func _on_metronome_beat(is_downbeat: bool) -> void:
+	# 可以在这里添加节拍可视化效果
+	pass
 
 
 ## 设置网格UI
