@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://rank_crown"]
+
+[ext_resource type="Script" path="res://src/ui/components/rank_crown.gd" id="1_crown"]
+
+[node name="RankCrown" type="Control"]
+layout_mode = 3
+custom_minimum_size = Vector2(180, 240)
+script = ExtResource("1_crown")
+crown_size = 120.0
