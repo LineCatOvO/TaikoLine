@@ -1,0 +1,80 @@
+[gd_scene load_steps=2 format=3 uid="uid://song_select_background"]
+
+[ext_resource type="Script" path="res://src/ui/components/song_select_background.gd" id="1_script"]
+
+[node name="SongSelectBackground" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="BackgroundGradient" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.08, 0.25, 1)
+
+[node name="GlowOverlay" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.3, 0.2, 0.6, 1)
+modulate = Color(0.3, 0.2, 0.6, 0.1)
+
+[node name="GlowCenter" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300
+offset_top = -200
+offset_right = 300
+offset_bottom = 200
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.35, 0.25, 0.65, 1)
+modulate = Color(0.35, 0.25, 0.65, 0.12)
+
+[node name="FloatingNotes" type="Node2D" parent="."]
+
+[node name="Note1" type="Sprite2D" parent="FloatingNotes"]
+position = Vector2(-50, 150)
+scale = Vector2(0.5, 0.5)
+
+[node name="Note2" type="Sprite2D" parent="FloatingNotes"]
+position = Vector2(-50, 300)
+scale = Vector2(0.4, 0.4)
+
+[node name="Note3" type="Sprite2D" parent="FloatingNotes"]
+position = Vector2(-50, 450)
+scale = Vector2(0.6, 0.6)
+
+[node name="Note4" type="Sprite2D" parent="FloatingNotes"]
+position = Vector2(-50, 200)
+scale = Vector2(0.35, 0.35)
+
+[node name="Note5" type="Sprite2D" parent="FloatingNotes"]
+position = Vector2(-50, 350)
+scale = Vector2(0.45, 0.45)
+
+[node name="Note6" type="Sprite2D" parent="FloatingNotes"]
+position = Vector2(-50, 500)
+scale = Vector2(0.55, 0.55)
+
+[node name="Note7" type="Sprite2D" parent="FloatingNotes"]
+position = Vector2(-50, 100)
+scale = Vector2(0.3, 0.3)
+
+[node name="Note8" type="Sprite2D" parent="FloatingNotes"]
+position = Vector2(-50, 400)
+scale = Vector2(0.5, 0.5)

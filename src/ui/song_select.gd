@@ -2,9 +2,10 @@ class_name SongSelectUI
 extends Control
 ## 选曲界面
 ## 显示歌曲列表，允许选择歌曲和难度
+## 参考 Taiko no Tatsujin 虹版设计风格
 ## 作者：TaikoLine Team
-## 日期：2026-03-27
-## 更新：优化场景过渡动画和列表滚动动画
+## 日期：2026-04-03
+## 更新：完善 UI 组件，添加封面显示、动画效果和音效反馈
 
 const SongDatabase = preload("res://src/ui/song_database.gd")
 const SongItem = preload("res://src/ui/components/song_item.gd")
@@ -29,7 +30,11 @@ const DIFFICULTY_COLORS = [
 @onready var _song_list_scroll: ScrollContainer = $MainContainer/LeftPanel/SongListScroll
 @onready var _song_list_container: VBoxContainer = $MainContainer/LeftPanel/SongListScroll/SongListContainer
 
-## UI节点引用 - 右侧面板
+## UI节点引用 - 右侧面板 - 封面区域
+@onready var _cover_placeholder: ColorRect = $MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/CoverSection/CoverPlaceholder
+@onready var _cover_image: TextureRect = $MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/CoverSection/CoverImage
+
+## UI节点引用 - 右侧面板 - 信息区域
 @onready var _title_label: Label = $MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/TitleSection/TitleLabel
 @onready var _subtitle_label: Label = $MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/TitleSection/SubtitleLabel
 @onready var _bpm_value: Label = $MainContainer/RightPanel/SongInfoPanel/SongInfoVBox/StatsSection/BPMValue
@@ -66,6 +71,9 @@ var _navigation_enabled: bool = true
 ## 场景过渡动画时长
 const TRANSITION_DURATION: float = 0.3
 
+## 列表项动画时长
+const ITEM_ANIMATION_DURATION: float = 0.2
+
 
 func _ready() -> void:
 	_setup_song_database()
@@ -88,7 +96,8 @@ func _setup_difficulty_buttons() -> void:
 		var btn: Button = _difficulty_buttons.get_child(i)
 		btn.button_group = group
 		btn.add_theme_color_override("font_color", DIFFICULTY_COLORS[i])
-		btn.add_theme_color_override("font_hover_color", DIFFICULTY_COLORS[i])
+		btn.add_theme_color_override("font_hover_color", DIFFICULTY_COLORS[i].lightened(0.2))
+		btn.add_theme_color_override("font_pressed_color", DIFFICULTY_COLORS[i])
 
 	# 默认选中 Oni
 	var oni_btn: Button = _difficulty_buttons.get_child(3)
@@ -136,16 +145,42 @@ func _update_song_list() -> void:
 		var song_item = _create_song_item(song, i)
 		_song_list_container.add_child(song_item)
 
+		# 添加入场动画（延迟显示）
+		song_item.modulate.a = 0.0
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_QUAD)
+		tween.tween_interval(i * 0.03)  # 延迟
+		tween.tween_property(song_item, "modulate:a", 1.0, ITEM_ANIMATION_DURATION)
+
 
 ## 创建歌曲列表项
 func _create_song_item(song: Dictionary, index: int) -> Control:
-	# 创建容器
+	# 尝试加载场景文件
+	var song_item_scene = load("res://scenes/components/song_item.tscn")
+	if song_item_scene:
+		var song_item = song_item_scene.instantiate()
+		song_item.set_song_data(song)
+		song_item.selected.connect(_on_song_selected.bind(index))
+		song_item.preview_requested.connect(_on_preview_pressed)
+		return song_item
+
+	# 如果场景文件不存在，使用代码创建
 	var container = PanelContainer.new()
-	container.custom_minimum_size = Vector2(0, 70)
+	container.custom_minimum_size = Vector2(0, 80)
 
 	# 创建内容
 	var hbox = HBoxContainer.new()
 	container.add_child(hbox)
+
+	# 封面区域
+	var cover_container = PanelContainer.new()
+	cover_container.custom_minimum_size = Vector2(70, 70)
+	hbox.add_child(cover_container)
+
+	var cover_placeholder = ColorRect.new()
+	cover_placeholder.color = Color(0.2, 0.15, 0.4, 1)
+	cover_container.add_child(cover_placeholder)
 
 	# 左侧信息
 	var info_vbox = VBoxContainer.new()
@@ -155,7 +190,7 @@ func _create_song_item(song: Dictionary, index: int) -> Control:
 	# 标题
 	var title = Label.new()
 	title.text = song.title
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 	info_vbox.add_child(title)
 
@@ -195,6 +230,13 @@ func _create_song_item(song: Dictionary, index: int) -> Control:
 	var btn_vbox = VBoxContainer.new()
 	btn_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	hbox.add_child(btn_vbox)
+
+	# 预览按钮
+	var preview_btn = Button.new()
+	preview_btn.text = "Preview"
+	preview_btn.custom_minimum_size = Vector2(80, 30)
+	preview_btn.pressed.connect(_on_preview_pressed)
+	btn_vbox.add_child(preview_btn)
 
 	# 选择按钮
 	var select_btn = Button.new()
@@ -237,6 +279,9 @@ func _select_song(index: int) -> void:
 	_genre_value.text = song.genre if song.genre != "" else "---"
 	_maker_value.text = song.maker if song.maker != "" else "---"
 
+	# 更新封面显示
+	_update_cover_display(song)
+
 	# 更新难度等级显示
 	_update_level_display()
 
@@ -248,6 +293,43 @@ func _select_song(index: int) -> void:
 
 	# 播放导航音效
 	_play_navigate_sound()
+
+
+## 更新封面显示
+func _update_cover_display(song: Dictionary) -> void:
+	var base_dir = song.get("base_dir", "")
+
+	if base_dir == "":
+		_cover_placeholder.visible = true
+		_cover_image.visible = false
+		return
+
+	# 尝试常见的封面文件名
+	var cover_names = ["cover.png", "cover.jpg", "cover.jpeg", "album.png", "album.jpg"]
+	var cover_path = ""
+
+	for name in cover_names:
+		var path = base_dir + "/" + name
+		if ResourceLoader.exists(path):
+			cover_path = path
+			break
+
+	if cover_path != "":
+		var texture = load(cover_path)
+		if texture:
+			_cover_image.texture = texture
+			_cover_placeholder.visible = false
+			_cover_image.visible = true
+
+			# 封面显示动画
+			var tween = create_tween()
+			tween.set_ease(Tween.EASE_OUT)
+			tween.set_trans(Tween.TRANS_QUAD)
+			_cover_image.modulate.a = 0.0
+			tween.tween_property(_cover_image, "modulate:a", 1.0, 0.3)
+	else:
+		_cover_placeholder.visible = true
+		_cover_image.visible = false
 
 
 ## 更新难度等级显示
@@ -263,6 +345,13 @@ func _update_level_display() -> void:
 		var level = song.courses[_current_difficulty].level
 		_level_display.text = "Level: %d" % level
 		_level_display.add_theme_color_override("font_color", DIFFICULTY_COLORS[_current_difficulty])
+
+		# 等级显示动画
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_BACK)
+		_level_display.scale = Vector2(1.2, 1.2)
+		tween.tween_property(_level_display, "scale", Vector2.ONE, 0.2)
 	else:
 		_level_display.text = "Level: N/A"
 		_level_display.add_theme_color_override("font_color", Color.GRAY)
@@ -300,6 +389,8 @@ func _reset_song_info() -> void:
 	_maker_value.text = "---"
 	_level_display.text = "Level: ---"
 	_start_btn.disabled = true
+	_cover_placeholder.visible = true
+	_cover_image.visible = false
 
 
 ## 难度按钮按下
@@ -404,9 +495,6 @@ func _change_scene(scene_path: String) -> void:
 
 	# 等待过渡完成
 	transition.change_scene(scene_path)
-
-
-## 播放导航音效
 
 
 ## 播放导航音效

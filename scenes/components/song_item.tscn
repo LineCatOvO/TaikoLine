@@ -1,0 +1,121 @@
+[gd_scene load_steps=3 format=3 uid="uid://song_item_scene"]
+
+[ext_resource type="Script" path="res://src/ui/components/song_item.gd" id="1_script"]
+[ext_resource type="Theme" uid="uid://main_menu_theme" path="res://resources/ui/themes/main_menu_theme.tres" id="2_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_normal"]
+bg_color = Color(0.15, 0.1, 0.35, 0.85)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 3
+shadow_offset = Vector2(1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
+bg_color = Color(0.25, 0.18, 0.5, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+shadow_color = Color(0.4, 0.25, 0.7, 0.4)
+shadow_size = 6
+shadow_offset = Vector2(0, 0)
+border_color = Color(0.5, 0.35, 0.8, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_selected"]
+bg_color = Color(0.3, 0.2, 0.6, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+shadow_color = Color(0.6, 0.4, 0.9, 0.5)
+shadow_size = 8
+shadow_offset = Vector2(0, 0)
+border_color = Color(0.8, 0.5, 1.0, 1.0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+
+[node name="SongItem" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 80)
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="MainHBox" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="CoverContainer" type="PanelContainer" parent="MainHBox"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+
+[node name="CoverPlaceholder" type="ColorRect" parent="MainHBox/CoverContainer"]
+layout_mode = 2
+color = Color(0.2, 0.15, 0.4, 1)
+
+[node name="CoverIcon" type="TextureRect" parent="MainHBox/CoverContainer"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="InfoVBox" type="VBoxContainer" parent="MainHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="TitleLabel" type="Label" parent="MainHBox/InfoVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Song Title"
+
+[node name="SubtitleLabel" type="Label" parent="MainHBox/InfoVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Subtitle"
+
+[node name="InfoHBox" type="HBoxContainer" parent="MainHBox/InfoVBox"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="BPMLabel" type="Label" parent="MainHBox/InfoVBox/InfoHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.5, 0.8, 1.0, 1)
+text = "BPM: 120"
+
+[node name="GenreLabel" type="Label" parent="MainHBox/InfoVBox/InfoHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.8, 0.6, 0.4, 1)
+text = "Genre: Pop"
+
+[node name="DifficultyContainer" type="HBoxContainer" parent="MainHBox/InfoVBox/InfoHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ButtonVBox" type="VBoxContainer" parent="MainHBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 5
+
+[node name="PreviewBtn" type="Button" parent="MainHBox/ButtonVBox"]
+custom_minimum_size = Vector2(80, 30)
+layout_mode = 2
+text = "Preview"
+
+[node name="SelectBtn" type="Button" parent="MainHBox/ButtonVBox"]
+custom_minimum_size = Vector2(80, 30)
+layout_mode = 2
+text = "Select"
+
+[connection signal="pressed" from="MainHBox/ButtonVBox/PreviewBtn" to="." method="_on_preview_pressed"]
+[connection signal="pressed" from="MainHBox/ButtonVBox/SelectBtn" to="." method="_on_select_pressed"]
