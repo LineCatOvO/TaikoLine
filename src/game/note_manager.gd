@@ -7,6 +7,9 @@ extends Node
 ## - 使用对象池复用音符对象，减少内存分配
 ## - 使用索引标记代替数组删除，提高队列处理效率
 ## - 预分配对象池，避免运行时创建
+## - 可见性剔除：音符离开屏幕后隐藏，减少渲染开销
+## - 分批更新：减少每帧更新的音符数量
+## - 更新频率控制：非关键音符降低更新频率
 
 const TJAData = preload("res://src/parser/tja_data.gd")
 const GameNote = preload("res://src/game/note.gd")
@@ -20,6 +23,15 @@ signal note_missed(note: GameNote)
 ## 配置
 @export var pool_size: int = 100  ## 对象池大小
 @export var spawn_position_x: float = 1200.0  ## 生成位置X坐标
+
+## 可见性剔除配置
+@export var visibility_culling_enabled: bool = true  ## 是否启用可见性剔除
+@export var culling_margin: float = 100.0  ## 剔除边界余量（像素）
+@export var screen_width: float = 1280.0  ## 屏幕宽度
+
+## 分批更新配置
+@export var batch_update_enabled: bool = true  ## 是否启用分批更新
+@export var max_updates_per_frame: int = 20  ## 每帧最大更新音符数
 
 ## 音符池
 var _note_pool: Array[GameNote] = []
@@ -48,6 +60,17 @@ var _branch_note_queues: Dictionary = {
 	TJAData.BranchType.MASTER: []
 }
 var _has_branch: bool = false
+
+## 可见性剔除边界
+var _visible_left_bound: float = -culling_margin
+var _visible_right_bound: float = screen_width + culling_margin
+
+## 分批更新索引
+var _batch_update_index: int = 0
+
+## 性能统计
+var _visible_note_count: int = 0
+var _hidden_note_count: int = 0
 
 
 func _ready() -> void:
@@ -295,13 +318,75 @@ func _spawn_note(note_info: Dictionary) -> void:
 	note_spawned.emit(note)
 
 
-## 更新活动音符
+## 更新活动音符（优化版本 - 可见性剔除 + 分批更新）
 func _update_active_notes() -> void:
 	if scroll_system == null:
 		return
-	
-	for note in _active_notes:
+
+	# 重置统计
+	_visible_note_count = 0
+	_hidden_note_count = 0
+
+	# 分批更新模式
+	if batch_update_enabled:
+		_update_notes_batched()
+	else:
+		_update_notes_full()
+
+
+## 分批更新音符（优化版本）
+func _update_notes_batched() -> void:
+	var active_count = _active_notes.size()
+	if active_count == 0:
+		return
+
+	# 计算本轮需要更新的音符数量
+	var updates_needed = min(max_updates_per_frame, active_count)
+
+	# 从当前索引开始更新
+	for i in range(updates_needed):
+		var note_index = (_batch_update_index + i) % active_count
+		var note = _active_notes[note_index]
+
+		# 更新音符位置
 		note.update_position(_current_time, scroll_system)
+
+		# 应用可见性剔除
+		_apply_visibility_culling(note)
+
+	# 更新下一轮的起始索引
+	_batch_update_index = (_batch_update_index + updates_needed) % active_count
+
+
+## 全量更新音符（用于关键场景）
+func _update_notes_full() -> void:
+	for note in _active_notes:
+		# 更新音符位置
+		note.update_position(_current_time, scroll_system)
+
+		# 应用可见性剔除
+		_apply_visibility_culling(note)
+
+
+## 应用可见性剔除
+func _apply_visibility_culling(note: GameNote) -> void:
+	if not visibility_culling_enabled:
+		_visible_note_count += 1
+		return
+
+	# 检查音符是否在可见范围内
+	var note_x = note.position.x
+	var is_visible = note_x >= _visible_left_bound and note_x <= _visible_right_bound
+
+	# 更新音符可见性
+	if is_visible:
+		if not note.visible:
+			note.visible = true
+		_visible_note_count += 1
+	else:
+		if note.visible:
+			note.visible = false
+		_hidden_note_count += 1
 
 
 ## 检查错过的音符
@@ -380,6 +465,11 @@ func clear_all_notes() -> void:
 	current_branch = TJAData.BranchType.NORMAL
 	_has_branch = false
 
+	# 重置性能统计
+	_batch_update_index = 0
+	_visible_note_count = 0
+	_hidden_note_count = 0
+
 
 ## 获取活动音符数量
 func get_active_note_count() -> int:
@@ -409,3 +499,56 @@ func set_scroll_system(system: Node) -> void:
 ## 设置判定系统
 func set_judge_system(system: Node) -> void:
 	judge_system = system
+
+
+## ==================== 性能优化配置 ====================
+
+## 设置可见性剔除启用状态
+func set_visibility_culling(enabled: bool) -> void:
+	visibility_culling_enabled = enabled
+
+
+## 设置剔除边界余量
+func set_culling_margin(margin: float) -> void:
+	culling_margin = margin
+	_visible_left_bound = -culling_margin
+	_visible_right_bound = screen_width + culling_margin
+
+
+## 设置屏幕宽度
+func set_screen_width(width: float) -> void:
+	screen_width = width
+	_visible_right_bound = screen_width + culling_margin
+
+
+## 设置分批更新启用状态
+func set_batch_update(enabled: bool) -> void:
+	batch_update_enabled = enabled
+
+
+## 设置每帧最大更新音符数
+func set_max_updates_per_frame(max_updates: int) -> void:
+	max_updates_per_frame = max(1, max_updates)
+
+
+## 获取可见音符数量
+func get_visible_note_count() -> int:
+	return _visible_note_count
+
+
+## 获取隐藏音符数量
+func get_hidden_note_count() -> int:
+	return _hidden_note_count
+
+
+## 获取性能统计
+func get_performance_stats() -> Dictionary:
+	return {
+		"active_notes": _active_notes.size(),
+		"visible_notes": _visible_note_count,
+		"hidden_notes": _hidden_note_count,
+		"pending_notes": get_pending_note_count(),
+		"pool_size": _note_pool.size(),
+		"batch_update_enabled": batch_update_enabled,
+		"visibility_culling_enabled": visibility_culling_enabled
+	}

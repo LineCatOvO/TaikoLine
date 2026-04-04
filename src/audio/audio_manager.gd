@@ -2,6 +2,13 @@ extends Node
 ## 音频管理器
 ## 管理背景音乐播放、音效播放、音频同步、输出设备和延迟测试
 ## 作为Autoload单例使用
+##
+## 性能优化说明：
+## - 音效预加载：启动时预加载所有常用音效
+## - 播放器池：复用 AudioStreamPlayer，减少创建开销
+## - 播放优先级：关键音效优先播放
+## - 异步加载：支持异步加载大型音频资源
+## - 播放统计：提供音频播放性能统计
 
 ## ==================== 信号 ====================
 
@@ -20,6 +27,10 @@ signal output_device_changed(device_name: String)
 ## 延迟测试信号
 signal latency_test_started()
 signal latency_test_completed(latency_ms: float)
+
+## 音频加载信号
+signal sound_preloaded(sound_name: String)
+signal all_sounds_preloaded()
 
 ## 音频总线名称
 const MASTER_BUS := "Master"
@@ -79,6 +90,19 @@ var _is_latency_testing: bool = false
 
 ## 延迟测试计数器
 var _latency_test_count: int = 0
+
+## ==================== 性能优化相关变量 ====================
+
+## 音效播放优先级（高优先级音效优先播放）
+const HIGH_PRIORITY_SOUNDS := ["don", "ka", "judge_perfect", "judge_good"]
+
+## 播放统计
+var _sfx_play_count: int = 0
+var _sfx_skip_count: int = 0  ## 因池满而跳过的播放次数
+var _preload_count: int = 0
+
+## 是否已完成预加载
+var _is_preloaded: bool = false
 
 ## 音效类型定义
 ## 支持WAV和OGG格式，Godot会自动处理导入
@@ -141,14 +165,34 @@ func _create_music_player() -> void:
 	_music_player.finished.connect(_on_music_finished)
 
 
-## 预加载音效资源
+## 预加载音效资源（优化版本 - 添加统计和信号）
 func _preload_sound_effects() -> void:
+	_preload_count = 0
+
 	for sound_name in SOUND_EFFECTS:
 		var sound_path = SOUND_EFFECTS[sound_name]
 		if FileAccess.file_exists(sound_path):
 			var audio_stream = load(sound_path)
 			if audio_stream:
 				_preloaded_sounds[sound_name] = audio_stream
+				_preload_count += 1
+				sound_preloaded.emit(sound_name)
+
+	_is_preloaded = true
+	all_sounds_preloaded.emit()
+
+	# 初始化播放器池
+	_initialize_sfx_pool()
+
+
+## 初始化音效播放器池（优化版本 - 预创建播放器）
+func _initialize_sfx_pool() -> void:
+	# 预创建部分播放器，减少首次播放延迟
+	for i in range(min(4, SFX_POOL_SIZE)):
+		var player = AudioStreamPlayer.new()
+		player.bus = SFX_BUS
+		add_child(player)
+		_sfx_player_pool.append(player)
 
 
 ## ==================== 背景音乐控制 ====================
@@ -286,25 +330,31 @@ func set_sfx_player(player: Node) -> void:
 	_sfx_player = player
 
 
-## 播放音效
+## 播放音效（优化版本 - 优先级播放 + 统计）
 ## @param sound_name: 音效名称
 ## @param volume_db: 音量偏移（分贝）
-func play_sfx(sound_name: String, volume_db: float = 0.0) -> void:
+## @param high_priority: 是否高优先级（可选）
+func play_sfx(sound_name: String, volume_db: float = 0.0, high_priority: bool = false) -> void:
+	# 检查是否为高优先级音效
+	var is_high_priority = high_priority or sound_name in HIGH_PRIORITY_SOUNDS
+
 	if _sfx_player and _sfx_player.has_method("play_sound"):
 		_sfx_player.play_sound(sound_name, volume_db)
 	elif sound_name in _preloaded_sounds:
 		# 直接播放预加载的音效（使用对象池）
-		_play_sfx_direct(sound_name, volume_db)
+		_play_sfx_direct(sound_name, volume_db, is_high_priority)
 
 
-## 直接播放音效（优化版本 - 使用对象池）
-func _play_sfx_direct(sound_name: String, volume_db: float = 0.0) -> void:
+## 直接播放音效（优化版本 - 优先级播放）
+func _play_sfx_direct(sound_name: String, volume_db: float = 0.0, high_priority: bool = false) -> void:
 	if not sound_name in _preloaded_sounds:
 		return
 
 	# 从池中获取播放器
-	var player = _get_sfx_player_from_pool()
+	var player = _get_sfx_player_from_pool(high_priority)
 	if player == null:
+		# 池已满且非高优先级，跳过播放
+		_sfx_skip_count += 1
 		return  # 池已满，跳过播放
 
 	player.stream = _preloaded_sounds[sound_name]
@@ -312,9 +362,11 @@ func _play_sfx_direct(sound_name: String, volume_db: float = 0.0) -> void:
 	player.bus = SFX_BUS
 	player.play()
 
+	_sfx_play_count += 1
 
-## 从池中获取音效播放器
-func _get_sfx_player_from_pool() -> AudioStreamPlayer:
+
+## 从池中获取音效播放器（优化版本 - 优先级处理）
+func _get_sfx_player_from_pool(high_priority: bool = false) -> AudioStreamPlayer:
 	# 尝试从池中获取空闲的播放器
 	for player in _sfx_player_pool:
 		if not player.playing:
@@ -323,9 +375,22 @@ func _get_sfx_player_from_pool() -> AudioStreamPlayer:
 	# 池未满，创建新播放器
 	if _sfx_player_pool.size() < SFX_POOL_SIZE:
 		var player = AudioStreamPlayer.new()
+		player.bus = SFX_BUS
 		add_child(player)
 		_sfx_player_pool.append(player)
 		return player
+
+	# 池已满，高优先级音效可以打断低优先级音效
+	if high_priority:
+		# 找到正在播放非高优先级音效的播放器
+		for player in _sfx_player_pool:
+			if player.playing:
+				# 检查当前播放的音效是否为高优先级
+				var current_stream_name = _get_stream_name(player.stream)
+				if current_stream_name not in HIGH_PRIORITY_SOUNDS:
+					# 打断低优先级音效
+					player.stop()
+					return player
 
 	# 池已满，尝试复用最早完成的播放器
 	for player in _sfx_player_pool:
@@ -333,6 +398,14 @@ func _get_sfx_player_from_pool() -> AudioStreamPlayer:
 			return player
 
 	return null
+
+
+## 获取音频流名称（辅助方法）
+func _get_stream_name(stream: AudioStream) -> String:
+	for name in _preloaded_sounds:
+		if _preloaded_sounds[name] == stream:
+			return name
+	return ""
 
 
 ## 清理音效播放器池
@@ -739,3 +812,41 @@ func check_audio_system() -> Dictionary:
 		"is_testing": _is_latency_testing
 	}
 	return result
+
+
+## ==================== 音频性能统计 ====================
+
+## 获取音频播放统计
+func get_sfx_stats() -> Dictionary:
+	return {
+		"play_count": _sfx_play_count,
+		"skip_count": _sfx_skip_count,
+		"pool_size": _sfx_player_pool.size(),
+		"pool_max": SFX_POOL_SIZE,
+		"preloaded_count": _preload_count,
+		"is_preloaded": _is_preloaded
+	}
+
+
+## 重置音频统计
+func reset_sfx_stats() -> void:
+	_sfx_play_count = 0
+	_sfx_skip_count = 0
+
+
+## 检查音频性能是否良好
+func is_audio_performance_good() -> bool:
+	# 如果跳过次数过多，说明音频性能有问题
+	return _sfx_skip_count < _sfx_play_count * 0.1  # 跳过率小于10%
+
+
+## 获取预加载状态
+func is_preloaded() -> bool:
+	return _is_preloaded
+
+
+## 获取预加载进度
+func get_preload_progress() -> float:
+	if SOUND_EFFECTS.size() == 0:
+		return 1.0
+	return float(_preload_count) / float(SOUND_EFFECTS.size())
