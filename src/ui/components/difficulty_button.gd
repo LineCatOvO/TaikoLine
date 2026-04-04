@@ -5,6 +5,7 @@ extends Button
 ## 参考 Taiko no Tatsujin 虹版设计风格
 ## 作者：TaikoLine Team
 ## 日期：2026-04-03
+## 更新：添加发光效果、优化动画流畅度
 
 ## 难度类型
 enum DifficultyType {
@@ -40,7 +41,7 @@ const DIFFICULTY_NAMES = {
 @export var is_available: bool = true
 
 ## 动画速度
-@export var animation_speed: float = 0.15
+@export var animation_speed: float = 0.12
 
 ## 星星图标路径（可选）
 @export var star_icon_path: String = ""
@@ -48,6 +49,12 @@ const DIFFICULTY_NAMES = {
 ## UI节点引用
 var _level_container: HBoxContainer
 var _level_label: Label
+
+## 发光效果节点
+var _glow_effect: ColorRect = null
+
+## 波纹效果节点
+var _ripple_effect: ColorRect = null
 
 ## 样式资源
 var _normal_style: StyleBoxFlat
@@ -59,11 +66,57 @@ var _selected_style: StyleBoxFlat
 ## 是否选中
 var _is_selected: bool = false
 
+## 是否悬停
+var _is_hovering: bool = false
+
+## 发光脉冲 Tween
+var _glow_tween: Tween = null
+
+## 波纹 Tween
+var _ripple_tween: Tween = null
+
 
 func _ready() -> void:
 	_setup_styles()
 	_setup_ui()
+	_setup_effects()
+	_connect_signals()
 	_update_display()
+	_start_glow_animation(false)
+
+
+## 连接信号
+func _connect_signals() -> void:
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
+
+
+## 鼠标进入响应
+func _on_mouse_entered() -> void:
+	if not is_available:
+		return
+
+	_is_hovering = true
+	_start_glow_animation(true)
+
+	# 悬停缩放动画
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_BACK)
+	tween.tween_property(self, "scale", Vector2(1.05, 1.05), animation_speed)
+
+
+## 鼠标退出响应
+func _on_mouse_exited() -> void:
+	_is_hovering = false
+	_start_glow_animation(false)
+
+	# 恢复缩放动画
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_QUAD)
+	var target_scale = 1.1 if _is_selected else 1.0
+	tween.tween_property(self, "scale", Vector2(target_scale, target_scale), animation_speed)
 
 
 ## 设置样式
@@ -134,6 +187,87 @@ func _setup_ui() -> void:
 	# 星级显示将在按钮文本中体现
 
 
+## 设置特效节点
+func _setup_effects() -> void:
+	var base_color = DIFFICULTY_COLORS[difficulty_type]
+
+	# 创建发光效果层
+	_glow_effect = ColorRect.new()
+	_glow_effect.color = Color(base_color.r, base_color.g, base_color.b, 0.5)
+	_glow_effect.modulate.a = 0.15
+	_glow_effect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_glow_effect.z_index = -1  # 在按钮下方
+
+	# 设置全屏锚点
+	_glow_effect.anchors_preset = Control.PRESET_FULL_RECT
+	_glow_effect.offset_left = -8
+	_glow_effect.offset_right = 8
+	_glow_effect.offset_top = -8
+	_glow_effect.offset_bottom = 8
+
+	add_child(_glow_effect)
+	move_child(_glow_effect, 0)
+
+	# 创建波纹效果层
+	_ripple_effect = ColorRect.new()
+	_ripple_effect.color = Color(base_color.r, base_color.g, base_color.b, 0.4)
+	_ripple_effect.custom_minimum_size = Vector2(20, 20)
+	_ripple_effect.size = Vector2(20, 20)
+	_ripple_effect.modulate.a = 0.0
+	_ripple_effect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ripple_effect.z_index = 10
+	add_child(_ripple_effect)
+
+
+## 启动发光动画
+func _start_glow_animation(enhanced: bool = false) -> void:
+	if not _glow_effect:
+		return
+
+	# 停止之前的发光动画
+	if _glow_tween and _glow_tween.is_valid():
+		_glow_tween.kill()
+
+	var base_color = DIFFICULTY_COLORS[difficulty_type]
+	_glow_effect.color = Color(base_color.r, base_color.g, base_color.b, 0.5)
+
+	# 创建发光脉冲动画
+	_glow_tween = create_tween()
+	_glow_tween.set_ease(Tween.EASE_IN_OUT)
+	_glow_tween.set_trans(Tween.TRANS_SINE)
+	_glow_tween.set_loops()
+
+	var max_alpha = 0.5 if enhanced else 0.25
+	var min_alpha = 0.15
+
+	_glow_tween.tween_property(_glow_effect, "modulate:a", max_alpha, 0.6)
+	_glow_tween.tween_property(_glow_effect, "modulate:a", min_alpha, 0.6)
+
+
+## 创建点击波纹效果
+func _create_click_ripple() -> void:
+	if not _ripple_effect:
+		return
+
+	# 停止之前的波纹动画
+	if _ripple_tween and _ripple_tween.is_valid():
+		_ripple_tween.kill()
+
+	# 设置波纹初始状态
+	_ripple_effect.scale = Vector2.ONE
+	_ripple_effect.modulate.a = 0.5
+	_ripple_effect.position = size / 2 - Vector2(10, 10)
+
+	# 创建扩散动画
+	_ripple_tween = create_tween()
+	_ripple_tween.set_ease(Tween.EASE_OUT)
+	_ripple_tween.set_trans(Tween.TRANS_QUAD)
+
+	_ripple_tween.set_parallel(true)
+	_ripple_tween.tween_property(_ripple_effect, "scale", Vector2(2.5, 2.5), 0.4)
+	_ripple_tween.tween_property(_ripple_effect, "modulate:a", 0.0, 0.4)
+
+
 ## 更新显示
 func _update_display() -> void:
 	# 更新按钮文本
@@ -199,11 +333,14 @@ func get_difficulty_name() -> String:
 
 ## 处理按钮按下
 func _pressed() -> void:
+	# 创建点击波纹效果
+	_create_click_ripple()
+
 	# 添加点击动画
 	var tween = create_tween()
 	tween.set_ease(Tween.EASE_IN)
 	tween.set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(self, "scale", Vector2(0.95, 0.95), 0.05)
+	tween.tween_property(self, "scale", Vector2(0.92, 0.92), 0.05)
 	tween.tween_callback(_on_press_animation_complete)
 
 
