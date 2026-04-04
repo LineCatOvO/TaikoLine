@@ -2,6 +2,7 @@
 ## 功能：统一管理UI动画效果，提供动画预设和性能优化
 ## 作者：TaikoLine Team
 ## 日期：2026-03-27
+## 更新：添加更多动画预设、优化性能
 
 extends Node
 
@@ -20,7 +21,13 @@ enum PresetType {
 	PULSE,          ## 脉冲效果
 	GLOW,           ## 发光效果
 	POP,            ## 弹出效果
-	WIGGLE          ## 摆动效果
+	WIGGLE,         ## 摆动效果
+	RIPPLE,         ## 波纹效果
+	SPARKLE,        ## 闪烁效果
+	ELASTIC_IN,     ## 弹性进入
+	ELASTIC_OUT,    ## 弹性退出
+	SPRING,         ## 弹簧效果
+	ROTATION        ## 旋转效果
 }
 
 ## 缓动类型映射
@@ -38,7 +45,13 @@ const EASE_MAP = {
 	PresetType.PULSE: Tween.EASE_IN_OUT,
 	PresetType.GLOW: Tween.EASE_IN_OUT,
 	PresetType.POP: Tween.EASE_OUT,
-	PresetType.WIGGLE: Tween.EASE_IN_OUT
+	PresetType.WIGGLE: Tween.EASE_IN_OUT,
+	PresetType.RIPPLE: Tween.EASE_OUT,
+	PresetType.SPARKLE: Tween.EASE_IN_OUT,
+	PresetType.ELASTIC_IN: Tween.EASE_OUT,
+	PresetType.ELASTIC_OUT: Tween.EASE_IN,
+	PresetType.SPRING: Tween.EASE_OUT,
+	PresetType.ROTATION: Tween.EASE_IN_OUT
 }
 
 ## 过渡类型映射
@@ -56,22 +69,34 @@ const TRANS_MAP = {
 	PresetType.PULSE: Tween.TRANS_SINE,
 	PresetType.GLOW: Tween.TRANS_SINE,
 	PresetType.POP: Tween.TRANS_BACK,
-	PresetType.WIGGLE: Tween.TRANS_SINE
+	PresetType.WIGGLE: Tween.TRANS_SINE,
+	PresetType.RIPPLE: Tween.TRANS_QUAD,
+	PresetType.SPARKLE: Tween.TRANS_SINE,
+	PresetType.ELASTIC_IN: Tween.TRANS_ELASTIC,
+	PresetType.ELASTIC_OUT: Tween.TRANS_ELASTIC,
+	PresetType.SPRING: Tween.TRANS_SPRING,
+	PresetType.ROTATION: Tween.TRANS_QUAD
 }
 
 ## 默认动画时长
 const DEFAULT_DURATION = 0.3
 
 ## 动画时长预设
-const DURATION_FAST = 0.15
-const DURATION_NORMAL = 0.3
+const DURATION_FAST = 0.12
+const DURATION_NORMAL = 0.25
 const DURATION_SLOW = 0.5
 
 ## 活动的Tween列表（用于性能管理）
 var _active_tweens: Array[Tween] = []
 
+## Tween 缓存池（用于性能优化）
+var _tween_pool: Array[Tween] = []
+
 ## 最大同时活动的Tween数量
 const MAX_ACTIVE_TWEENS = 50
+
+## Tween 缓存池大小
+const TWEEN_POOL_SIZE = 10
 
 
 ## 创建预设动画
@@ -162,6 +187,42 @@ func create_preset_animation(target: Node, preset: PresetType, duration: float =
 			tween.tween_property(target, "rotation", original_rotation + 0.1, duration * 0.25)
 			tween.tween_property(target, "rotation", original_rotation - 0.1, duration * 0.25)
 			tween.tween_property(target, "rotation", original_rotation, duration * 0.25)
+
+		PresetType.RIPPLE:
+			var original_scale = target.scale
+			tween.tween_property(target, "scale", original_scale * 1.15, duration * 0.3)
+			tween.tween_property(target, "scale", original_scale, duration * 0.7)
+
+		PresetType.SPARKLE:
+			var original_modulate = target.modulate
+			tween.tween_property(target, "modulate:a", 1.5, duration * 0.2)
+			tween.tween_property(target, "modulate:a", 0.8, duration * 0.2)
+			tween.tween_property(target, "modulate:a", 1.2, duration * 0.2)
+			tween.tween_property(target, "modulate", original_modulate, duration * 0.4)
+
+		PresetType.ELASTIC_IN:
+			target.scale = Vector2.ZERO
+			tween.tween_property(target, "scale", Vector2(1.2, 1.2), duration * 0.4)
+			tween.tween_property(target, "scale", Vector2(0.9, 0.9), duration * 0.2)
+			tween.tween_property(target, "scale", Vector2(1.05, 1.05), duration * 0.15)
+			tween.tween_property(target, "scale", Vector2.ONE, duration * 0.25)
+
+		PresetType.ELASTIC_OUT:
+			var original_scale = target.scale
+			tween.tween_property(target, "scale", original_scale * 1.1, duration * 0.15)
+			tween.tween_property(target, "scale", Vector2.ZERO, duration * 0.85)
+
+		PresetType.SPRING:
+			var original_scale = target.scale
+			target.scale = Vector2(0.5, 0.5)
+			tween.tween_property(target, "scale", original_scale * 1.3, duration * 0.3)
+			tween.tween_property(target, "scale", original_scale * 0.85, duration * 0.2)
+			tween.tween_property(target, "scale", original_scale * 1.05, duration * 0.15)
+			tween.tween_property(target, "scale", original_scale, duration * 0.35)
+
+		PresetType.ROTATION:
+			var original_rotation = target.rotation
+			tween.tween_property(target, "rotation", original_rotation + TAU, duration)
 
 	# 添加到活动列表
 	_active_tweens.append(tween)
