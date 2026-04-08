@@ -25,6 +25,7 @@
 - 优化音符管理器性能 - 可见性剔除、分批更新、性能统计
 - 优化音频管理器性能 - 播放器池预创建、优先级播放、性能统计
 - 更新 README.md 开发状态 - 新增 6 个已完成功能，调整开发中功能列表 (task-P0-update-taikoline-readme-status)
+- 更新 TASK_PLAN_FULL.md P1 任务状态 - 标记已完成任务和部分完成任务，更新进度统计 (task-P0-update-taikoline-task-plan-status)
 
 ## [0.1.0] - 2026-04-03
 
